@@ -54,7 +54,7 @@ function startAnalysis() {
     }
 
     // Show loading first
-    window.location.href = '/loading?url=' + encodeURIComponent(url);
+    window.location.href = '/loading?url=' + encodeURIComponent(url) + '&lang=' + getLang();
 }
 
 document.getElementById('product-url').addEventListener('keypress', function(e) {

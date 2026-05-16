@@ -8,10 +8,22 @@ import os
 import random
 from datetime import datetime
 from google import genai as google_genai
+from google.genai import types as genai_types
 
 GEMINI_API_KEY = "AIzaSyCn_n1W52G9ao_NEwkjUdeAmAhGw8vtB2k"
 _genai_client = google_genai.Client(api_key=GEMINI_API_KEY)
 _GEMINI_MODEL = "gemini-2.5-flash"
+
+LANG_PROMPTS = {
+    'tr': 'Tüm metin içeriklerini (özet, özellikler, hedef kitle vb.) Türkçe yaz.',
+    'en': 'Write all text content (summary, features, audiences, etc.) in English.',
+    'de': 'Schreibe alle Texte (Zusammenfassung, Merkmale, Zielgruppen usw.) auf Deutsch.',
+    'fr': 'Écris tous les textes (résumé, caractéristiques, publics cibles, etc.) en français.',
+    'es': 'Escribe todo el contenido (resumen, características, audiencias, etc.) en español.',
+    'ar': 'اكتب جميع النصوص (الملخص والميزات والفئات المستهدفة وما إلى ذلك) باللغة العربية.',
+    'ru': 'Пиши весь текстовый контент (резюме, характеристики, целевую аудиторию и т.д.) на русском языке.',
+    'zh': '用中文写所有文本内容（摘要、特点、目标受众等）。',
+}
 
 app = Flask(__name__)
 app.secret_key = "shopmind-ai-secret-key-2024"
@@ -108,8 +120,9 @@ class RealAnalyzer:
         'Tasarımcılar': (['tasarım', 'yaratıcı', 'grafik', 'görsel', 'design', 'creative'], 'palette'),
     }
 
-    def __init__(self, url):
+    def __init__(self, url, lang='tr'):
         self.url = url
+        self.lang = lang
         self.soup = None
 
     def fetch_page(self):
@@ -414,6 +427,73 @@ class RealAnalyzer:
         name = re.sub(r'[-_]+', ' ', slug).strip()
         return ' '.join(w.capitalize() for w in name.split() if w)
 
+    def _validate_image_url(self, url):
+        if not url or not url.startswith('http'):
+            return False
+        from urllib.parse import urlparse
+        p = urlparse(url)
+        ext = p.path.lower()
+        if any(ext.endswith(e) for e in ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif')):
+            return True
+        cdn_hints = ['cdn.', 'images.', 'productimages.', 'img.', 'static.', 'media.', 'assets.']
+        return any(h in p.netloc.lower() for h in cdn_hints)
+
+    def fetch_product_via_search(self):
+        """Sayfa erişilemediğinde Gemini + Google Search ile gerçek ürün verisi çek."""
+        name = self._name_from_url()
+        site = self.detect_site()
+        site_map = {'hepsiburada': 'hepsiburada.com', 'trendyol': 'trendyol.com',
+                    'amazon': 'amazon.com.tr', 'n11': 'n11.com'}
+        site_domain = site_map.get(site, site)
+
+        prompt = (
+            f"Bu ürünü {site_domain} sitesinde Google arama sonuçlarından bul:\n"
+            f"URL: {self.url}\n"
+            f"Tahmini ürün: {name}\n\n"
+            "Bulduğun gerçek verileri SADECE şu JSON formatında döndür:\n"
+            '{\n'
+            '  "name": "<tam ürün adı>",\n'
+            '  "brand": "<marka>",\n'
+            '  "price": "<güncel TL fiyatı, örnek: 15.499 TL>",\n'
+            '  "rating": <5 üzerinden puan>,\n'
+            '  "review_count": <yorum sayısı tam sayı>,\n'
+            '  "image_url": "<direkt CDN görsel URL, .jpg/.webp/.png uzantılı>",\n'
+            '  "category": "<kategori>"\n'
+            '}'
+        )
+        try:
+            resp = _genai_client.models.generate_content(
+                model=_GEMINI_MODEL,
+                contents=prompt,
+                config=genai_types.GenerateContentConfig(
+                    tools=[genai_types.Tool(google_search=genai_types.GoogleSearch())]
+                )
+            )
+            text = resp.text.strip()
+            text = re.sub(r'^```(?:json)?\s*', '', text)
+            text = re.sub(r'\s*```$', '', text)
+            # JSON bloğunu bul
+            m = re.search(r'\{[\s\S]+\}', text)
+            data = json.loads(m.group() if m else text)
+
+            image = data.get('image_url', '')
+            if not self._validate_image_url(image):
+                image = ''
+
+            return {
+                'name': data.get('name') or name,
+                'brand': data.get('brand', ''),
+                'price': data.get('price', ''),
+                'rating': float(data.get('rating', 0) or 0),
+                'image': image,
+                'category': data.get('category', ''),
+                'review_count': int(data.get('review_count', 0) or 0),
+                'reviews': [],
+            }
+        except Exception as e:
+            print(f"[Search grounding error] {e}")
+            return None
+
     def _extract_trendyol_embedded(self):
         """Trendyol sayfasındaki gömülü JS state'inden ürün verisini çeker."""
         if not self.soup:
@@ -612,7 +692,10 @@ class RealAnalyzer:
             review_text = "\n".join(f"- {r}" for r in reviews[:25])
             review_section = f"\n\nKullanıcı Yorumları:\n{review_text}"
 
+        lang_inst = LANG_PROMPTS.get(self.lang, LANG_PROMPTS['tr'])
+
         prompt = (
+            lang_inst + "\n\n" +
             "\n".join(context_lines) + review_section +
             "\n\nBu ürüne özel kapsamlı bir analiz yap. SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir şey ekleme:\n"
             '{\n'
@@ -719,18 +802,20 @@ class RealAnalyzer:
 
             description = self._get_meta_description()
         else:
-            # Sayfa erişilemedi (403/timeout) — URL'den ürün ismini çıkar, Gemini ile analiz et
-            print(f"[Fetch failed] URL tabanlı analiz: {self.url}")
-            name = self._name_from_url()
-            product_info = {
-                'name': name,
-                'brand': '',
-                'price': '',
-                'rating': 0,
-                'image': '',
-                'category': '',
-                'review_count': 0,
-            }
+            # Sayfa erişilemedi — önce Gemini Search Grounding ile gerçek veri çek
+            print(f"[Fetch failed] Search grounding deneniyor: {self.url}")
+            search_result = self.fetch_product_via_search()
+            if search_result and search_result.get('name'):
+                product_info = search_result
+                print(f"[Search grounding OK] {product_info['name']} | fiyat={product_info.get('price')} | görsel={bool(product_info.get('image'))}")
+            else:
+                # Son fallback: URL slug parse
+                print(f"[Search grounding failed] URL parse fallback: {self.url}")
+                product_info = {
+                    'name': self._name_from_url(),
+                    'brand': '', 'price': '', 'rating': 0,
+                    'image': '', 'category': '', 'review_count': 0,
+                }
             description = ''
 
         reviews = product_info.pop('reviews', [])
@@ -827,12 +912,16 @@ def analyze_route():
 
     data = request.get_json(silent=True) or {}
     url = (data.get('url') or '').strip()
+    lang = (data.get('lang') or 'tr').strip()
+    if lang not in LANG_PROMPTS:
+        lang = 'tr'
     if not url:
         return jsonify({'error': 'URL gerekli'}), 400
     if not (url.startswith('http://') or url.startswith('https://')):
         url = 'https://' + url
 
-    analyzer = RealAnalyzer(url)
+    session['lang'] = lang
+    analyzer = RealAnalyzer(url, lang=lang)
     result = analyzer.analyze()
 
     if result is None:

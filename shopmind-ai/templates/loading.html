@@ -84,7 +84,7 @@ if (!productUrl) {
     fetch('/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: productUrl })
+        body: JSON.stringify({ url: productUrl, lang: urlParams.get('lang') || 'tr' })
     })
     .then(response => response.json().then(data => ({ status: response.status, data })))
     .then(({ status, data }) => {
