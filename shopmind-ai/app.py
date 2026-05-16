@@ -536,10 +536,10 @@ class RealAnalyzer:
             resp = _genai_client.models.generate_content(model=_GEMINI_MODEL, contents=prompt)
             text = resp.text.strip()
             icon_map = {
-                'Kesinlikle Alınır': 'thumb_up',
-                'Tavsiye Edilir': 'recommend',
+                'Kesinlikle Alınır': 'task_alt',
+                'Tavsiye Edilir': 'check_circle',
                 'Değerlendirilebilir': 'lightbulb',
-                'Dikkatli Olunmalı': 'warning',
+                'Dikkatli Olunmalı': 'priority_high',
             }
             for label, icon in icon_map.items():
                 if label in text:
@@ -639,10 +639,10 @@ class RealAnalyzer:
         neu = max(0, 100 - pos - neg)
 
         icon_map = {
-            'Kesinlikle Alınır': 'thumb_up',
-            'Tavsiye Edilir': 'recommend',
+            'Kesinlikle Alınır': 'task_alt',
+            'Tavsiye Edilir': 'check_circle',
             'Değerlendirilebilir': 'lightbulb',
-            'Dikkatli Olunmalı': 'warning',
+            'Dikkatli Olunmalı': 'priority_high',
         }
         rec = data.get('recommendation', 'Değerlendirilebilir')
         rec_icon = next((v for k, v in icon_map.items() if k in rec), 'lightbulb')
@@ -791,8 +791,6 @@ class RealAnalyzer:
         else:
             risk_label, risk_icon, risk_color = 'Yüksek Risk', 'warning', 'text-error'
 
-        trend = self.get_trend(sentiment)
-
         return {
             'product': product_info,
             'recommendation': recommendation,
@@ -808,7 +806,6 @@ class RealAnalyzer:
             'review_count': review_count,
             'review_count_estimated': review_count_estimated,
             'page_accessible': page_fetched,
-            'trend': trend,
             'summary': summary,
             'url': self.url,
             'site': site,

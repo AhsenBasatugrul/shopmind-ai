@@ -72,8 +72,16 @@
                         {{ data.recommendation }}
                     </div>
                 </div>
-                <div class="h-16 w-16 rounded-full border-4 border-primary-container flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(57,255,20,0.3)] bg-surface">
-                    <span class="material-symbols-outlined text-primary-container text-[32px]" style="font-variation-settings: 'FILL' 1;">done</span>
+                <div class="h-16 w-16 rounded-full border-4 flex items-center justify-center shrink-0 bg-surface
+                    {% if data.recommendation == 'Kesinlikle Alınır' %}border-primary-container shadow-[0_0_20px_rgba(57,255,20,0.4)]
+                    {% elif data.recommendation == 'Tavsiye Edilir' %}border-primary-container shadow-[0_0_16px_rgba(57,255,20,0.25)]
+                    {% elif data.recommendation == 'Değerlendirilebilir' %}border-secondary shadow-[0_0_16px_rgba(200,180,50,0.3)]
+                    {% else %}border-error shadow-[0_0_20px_rgba(220,50,50,0.4)]{% endif %}">
+                    <span class="material-symbols-outlined text-[32px]
+                        {% if data.recommendation == 'Dikkatli Olunmalı' %}text-error
+                        {% elif data.recommendation == 'Değerlendirilebilir' %}text-secondary
+                        {% else %}text-primary-container{% endif %}"
+                        style="font-variation-settings: 'FILL' 1;">{{ data.recommendation_icon }}</span>
                 </div>
             </div>
 
@@ -210,20 +218,6 @@
             </div>
         </div>
 
-        <!-- Satisfaction Trend -->
-        <div class="glass-panel rounded-lg p-6 flex-grow animate-fade-in animate-fade-in-delay-2">
-            <h3 class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-4">Memnuniyet Trendi</h3>
-            <div class="h-32 w-full flex items-end justify-between gap-1 mt-auto">
-                {% for i in range(data.trend.months|length) %}
-                {% set month = data.trend.months[i] %}
-                {% set value = data.trend.values[i] %}
-                {% set is_last = (i == data.trend.months|length - 1) %}
-                <div class="w-1/6 {{ 'bg-primary-container/80 shadow-[0_-5px_15px_rgba(57,255,20,0.2)]' if is_last else 'bg-surface-container-highest hover:bg-white/10' }} rounded-t-sm transition-all duration-1000 relative group" style="height: 0%" data-height="{{ value }}%">
-                    <div class="absolute -top-6 left-1/2 -translate-x-1/2 text-label-sm {{ 'text-primary-container opacity-100' if is_last else 'opacity-0 group-hover:opacity-100' }} transition-opacity">{{ month }}</div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
     </div>
 </main>
 
@@ -246,12 +240,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 500);
     });
 
-    // Animate trend bars
-    document.querySelectorAll('[data-height]').forEach(bar => {
-        setTimeout(() => {
-            bar.style.height = bar.getAttribute('data-height');
-        }, 700);
-    });
 });
 </script>
 {% endblock %}
