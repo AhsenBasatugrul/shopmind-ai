@@ -19,11 +19,21 @@ app.secret_key = "shopmind-ai-secret-key-2024"
 USERS_FILE = os.path.join(os.path.dirname(__file__), 'users.json')
 
 HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
     'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
+    'Referer': 'https://www.google.com/',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'cross-site',
+    'Sec-Fetch-User': '?1',
+    'Cache-Control': 'max-age=0',
+    'sec-ch-ua': '"Google Chrome";v="124", "Chromium";v="124", "Not-A.Brand";v="99"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
 }
 
 # ============================================================
@@ -103,8 +113,10 @@ class RealAnalyzer:
         self.soup = None
 
     def fetch_page(self):
+        session = requests.Session()
+        session.headers.update(HEADERS)
         try:
-            resp = requests.get(self.url, headers=HEADERS, timeout=12, allow_redirects=True)
+            resp = session.get(self.url, timeout=15, allow_redirects=True)
             resp.raise_for_status()
             resp.encoding = resp.apparent_encoding
             self.soup = BeautifulSoup(resp.text, 'html.parser')
@@ -170,33 +182,46 @@ class RealAnalyzer:
 
     def extract_trendyol(self):
         ld = self.extract_json_ld()
+        embedded = self._extract_trendyol_embedded()
 
-        name = (ld.get('name') or
-                self._text('.pr-new-br span') or
-                self._text('h1.pr-new-br') or
-                self._text('h1'))
+        # Try embedded JS state first, then JSON-LD, then DOM
+        product_data = embedded.get('product', embedded.get('productDetailPage', {}))
 
-        brand = (ld.get('brand', {}).get('name', '') if isinstance(ld.get('brand'), dict) else ld.get('brand', '')) or \
-                self._text('.pr-new-br a') or self._text('[class*="brand"]')
+        name = (product_data.get('name') or ld.get('name') or
+                self._text('.pr-new-br span') or self._text('h1.pr-new-br') or self._text('h1'))
 
-        # Price from LD or DOM
+        brand_data = product_data.get('brand', {})
+        brand = ((brand_data.get('name') if isinstance(brand_data, dict) else brand_data) or
+                 (ld.get('brand', {}).get('name', '') if isinstance(ld.get('brand'), dict) else '') or
+                 self._text('.pr-new-br a') or self._text('[class*="brand"]'))
+
         price = ''
-        ld_offers = ld.get('offers', {})
-        if isinstance(ld_offers, list):
-            ld_offers = ld_offers[0] if ld_offers else {}
-        if ld_offers.get('price'):
-            price = f"₺{ld_offers['price']}"
+        embedded_price = product_data.get('price', {})
+        if isinstance(embedded_price, dict):
+            price = f"₺{embedded_price.get('sellingPrice', embedded_price.get('discountedPrice', ''))}"
+        if not price or price == '₺':
+            ld_offers = ld.get('offers', {})
+            if isinstance(ld_offers, list):
+                ld_offers = ld_offers[0] if ld_offers else {}
+            if ld_offers.get('price'):
+                price = f"₺{ld_offers['price']}"
         if not price:
             price = self._text('.prc-dsc') or self._text('[class*="price-box"]') or self._text('[class*="prc"]')
 
-        rating = self._parse_rating(str(ld.get('aggregateRating', {}).get('ratingValue', '')) or
-                                    self._text('.pro-rat-avg') or self._text('[class*="rating"]'))
+        rating_val = product_data.get('ratingScore', {})
+        if isinstance(rating_val, dict):
+            rating = float(rating_val.get('averageRating', 0) or 0)
+        else:
+            rating = self._parse_rating(
+                str(ld.get('aggregateRating', {}).get('ratingValue', '')) or
+                self._text('.pro-rat-avg') or self._text('[class*="rating"]'))
 
-        review_count_raw = str(ld.get('aggregateRating', {}).get('reviewCount', '')) or \
-                           self._text('[class*="review-count"]') or self._text('[class*="comment-count"]')
-        review_count = self._parse_count(review_count_raw)
+        review_count = int(product_data.get('ratingScore', {}).get('totalCount', 0) or 0)
+        if not review_count:
+            review_count_raw = (str(ld.get('aggregateRating', {}).get('reviewCount', '')) or
+                                self._text('[class*="review-count"]') or self._text('[class*="comment-count"]'))
+            review_count = self._parse_count(review_count_raw)
 
-        # Image
         img_el = (self.soup.select_one('.base-product-image img') or
                   self.soup.select_one('[class*="product-image"] img') or
                   self.soup.select_one('img[class*="product"]'))
@@ -209,8 +234,8 @@ class RealAnalyzer:
         reviews = [el.get_text(strip=True) for el in self.soup.select('.comment-text, [class*="rnr-com-tx"]')
                    if len(el.get_text(strip=True)) > 15]
 
-        category = (ld.get('category') or
-                    self._text('[class*="breadcrumb"] li:last-child') or '')
+        category = (product_data.get('category', {}).get('name', '') if isinstance(product_data.get('category'), dict) else '') or \
+                   ld.get('category') or self._text('[class*="breadcrumb"] li:last-child') or ''
 
         return dict(name=name, brand=brand, price=price, rating=rating,
                     image=image, category=category, review_count=review_count, reviews=reviews)
@@ -363,6 +388,62 @@ class RealAnalyzer:
         except Exception:
             return 0
 
+    def _name_from_url(self):
+        """Ürün adını URL slug'ından çıkar (sayfa erişilemediğinde fallback)."""
+        from urllib.parse import urlparse, unquote
+        path = unquote(urlparse(self.url).path.strip('/'))
+        u = self.url.lower()
+
+        if 'hepsiburada.com' in u:
+            m = re.match(r'(.+?)-pm-[A-Z0-9]+$', path)
+            slug = m.group(1) if m else path.split('/')[-1]
+        elif 'trendyol.com' in u:
+            last = path.split('/')[-1]
+            m = re.match(r'(.+)-p-\d+', last)
+            slug = m.group(1) if m else last
+        elif 'amazon.com' in u:
+            parts = path.split('/')
+            slug = parts[-3] if 'dp' in parts and parts.index('dp') >= 2 else parts[-1]
+        elif 'n11.com' in u:
+            last = path.split('/')[-1]
+            m = re.match(r'(.+)-\d+', last)
+            slug = m.group(1) if m else last
+        else:
+            slug = path.split('/')[-1]
+
+        name = re.sub(r'[-_]+', ' ', slug).strip()
+        return ' '.join(w.capitalize() for w in name.split() if w)
+
+    def _extract_trendyol_embedded(self):
+        """Trendyol sayfasındaki gömülü JS state'inden ürün verisini çeker."""
+        if not self.soup:
+            return {}
+        for script in self.soup.find_all('script'):
+            text = script.string or ''
+            if '__PRODUCT_DETAIL_APP_INITIAL_STATE__' not in text:
+                continue
+            m = re.search(r'__PRODUCT_DETAIL_APP_INITIAL_STATE__\s*=\s*(\{.+?\})\s*;?\s*(?:window|$)',
+                          text, re.DOTALL)
+            if not m:
+                m = re.search(r'__PRODUCT_DETAIL_APP_INITIAL_STATE__["\s:=]+(\{.+)', text, re.DOTALL)
+            if m:
+                try:
+                    raw = m.group(1)
+                    # Truncate at first unmatched brace to get valid JSON
+                    depth, end = 0, 0
+                    for i, ch in enumerate(raw):
+                        if ch == '{':
+                            depth += 1
+                        elif ch == '}':
+                            depth -= 1
+                            if depth == 0:
+                                end = i + 1
+                                break
+                    return json.loads(raw[:end]) if end else {}
+                except Exception:
+                    pass
+        return {}
+
     def _get_og_image(self):
         for attr, name in [('property', 'og:image'), ('property', 'og:image:secure_url'),
                            ('name', 'twitter:image')]:
@@ -490,11 +571,20 @@ class RealAnalyzer:
             score += 3
         return min(score, 98)
 
-    def get_trend(self):
+    def get_trend(self, sentiment=None):
         months = ['Oca', 'Şub', 'Mar', 'Nis', 'May']
-        base = random.randint(40, 65)
-        values = [max(20, base + random.randint(-15, 15)) for _ in range(4)]
-        values.append(random.randint(70, 95))
+        if sentiment:
+            target = max(20, min(90, sentiment.get('positive', 60)))
+            v = max(20, target - random.randint(15, 28))
+            values = []
+            for _ in range(4):
+                v = max(20, min(90, v + random.randint(-6, 12)))
+                values.append(v)
+            values.append(max(20, min(95, target + random.randint(-3, 5))))
+        else:
+            base = random.randint(40, 65)
+            values = [max(20, base + random.randint(-15, 15)) for _ in range(4)]
+            values.append(random.randint(70, 95))
         return {'months': months, 'values': values}
 
     def gemini_analyze(self, product_info, reviews, description):
@@ -524,15 +614,16 @@ class RealAnalyzer:
 
         prompt = (
             "\n".join(context_lines) + review_section +
-            "\n\nBu ürüne özel kapsamlı bir analiz yap. SADECE aşağıdaki JSON formatında yanıt ver, "
-            "başka hiçbir şey ekleme:\n"
+            "\n\nBu ürüne özel kapsamlı bir analiz yap. SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir şey ekleme:\n"
             '{\n'
-            '  "sentiment": {"positive": <0-100>, "neutral": <0-100>, "negative": <0-100>},\n'
-            '  "positives": ["<bu ürüne özel olumlu özellik>", "...", "..."],\n'
-            '  "negatives": ["<bu ürüne özel olumsuz özellik>", "..."],\n'
+            '  "sentiment": {"positive": <0-100 tam sayı>, "neutral": <0-100 tam sayı>, "negative": <0-100 tam sayı>},\n'
+            '  "positives": ["<bu ürüne özel olumlu özellik>", "<olumlu özellik>", "<olumlu özellik>"],\n'
+            '  "negatives": ["<bu ürüne özel olumsuz özellik>", "<olumsuz özellik>"],\n'
             '  "summary": "<bu ürüne özel 2-3 cümlelik doğal Türkçe özet>",\n'
             '  "recommendation": "<tam olarak şunlardan biri: Kesinlikle Alınır | Tavsiye Edilir | Değerlendirilebilir | Dikkatli Olunmalı>",\n'
-            '  "audiences": [{"name": "<hedef kitle>", "icon": "<material icon ismi>"}, ...]\n'
+            '  "audiences": [{"name": "<hedef kitle>", "icon": "<material icon ismi>"}, {"name": "...", "icon": "..."}, {"name": "...", "icon": "..."}],\n'
+            '  "price_estimate": "<bu ürünün Türkiye piyasasındaki tahmini fiyat aralığı, örnek: 8.500 - 12.000 TL>",\n'
+            '  "review_count_estimate": <bu ürünün büyük e-ticaret sitelerinde sahip olduğu tahmini toplam yorum sayısı, tam sayı>\n'
             '}'
         )
 
@@ -565,6 +656,8 @@ class RealAnalyzer:
             'recommendation': rec,
             'recommendation_icon': rec_icon,
             'audiences': data.get('audiences', [])[:5],
+            'price_estimate': str(data.get('price_estimate', '') or ''),
+            'review_count_estimate': int(data.get('review_count_estimate', 0) or 0),
         }
 
     def generate_summary(self, product_info, sentiment, positives, negatives):
@@ -604,36 +697,50 @@ class RealAnalyzer:
             return summary
 
     def analyze(self):
-        if not self.fetch_page():
-            return None
-
+        page_fetched = self.fetch_page()
         site = self.detect_site()
-        extractors = {
-            'trendyol': self.extract_trendyol,
-            'hepsiburada': self.extract_hepsiburada,
-            'amazon': self.extract_amazon,
-            'n11': self.extract_n11,
-            'generic': self.extract_generic,
-        }
-        product_info = extractors.get(site, self.extract_generic)()
 
-        # Fallback name from page title
-        if not product_info.get('name') or product_info['name'] in ('Ürün', ''):
-            generic = self.extract_generic()
-            product_info['name'] = generic.get('name', 'Ürün')
+        if page_fetched:
+            extractors = {
+                'trendyol': self.extract_trendyol,
+                'hepsiburada': self.extract_hepsiburada,
+                'amazon': self.extract_amazon,
+                'n11': self.extract_n11,
+                'generic': self.extract_generic,
+            }
+            product_info = extractors.get(site, self.extract_generic)()
 
-        # Reliable image fallback: og:image works on all sites
-        if not product_info.get('image'):
-            product_info['image'] = self._get_og_image()
+            if not product_info.get('name') or product_info['name'] in ('Ürün', ''):
+                generic = self.extract_generic()
+                product_info['name'] = generic.get('name', self._name_from_url())
 
-        # Meta description gives Gemini more product context even without reviews
-        description = self._get_meta_description()
+            if not product_info.get('image'):
+                product_info['image'] = self._get_og_image()
+
+            description = self._get_meta_description()
+        else:
+            # Sayfa erişilemedi (403/timeout) — URL'den ürün ismini çıkar, Gemini ile analiz et
+            print(f"[Fetch failed] URL tabanlı analiz: {self.url}")
+            name = self._name_from_url()
+            product_info = {
+                'name': name,
+                'brand': '',
+                'price': '',
+                'rating': 0,
+                'image': '',
+                'category': '',
+                'review_count': 0,
+            }
+            description = ''
 
         reviews = product_info.pop('reviews', [])
         review_count = product_info.get('review_count', len(reviews))
         if review_count == 0 and reviews:
             review_count = len(reviews)
             product_info['review_count'] = review_count
+
+        price_estimated = False
+        review_count_estimated = False
 
         # Single comprehensive Gemini call — product-specific even without reviews
         try:
@@ -645,6 +752,18 @@ class RealAnalyzer:
             recommendation = ai['recommendation']
             rec_icon = ai['recommendation_icon']
             audiences = ai['audiences']
+
+            # Fill in missing price from Gemini estimate
+            if not product_info.get('price') and ai.get('price_estimate'):
+                product_info['price'] = ai['price_estimate']
+                price_estimated = True
+
+            # Fill in missing review count from Gemini estimate
+            if review_count == 0 and ai.get('review_count_estimate', 0) > 0:
+                review_count = ai['review_count_estimate']
+                product_info['review_count'] = review_count
+                review_count_estimated = True
+
         except Exception as e:
             print(f"[Gemini full analysis error] {e}")
             sentiment = self.analyze_sentiment(reviews)
@@ -660,8 +779,19 @@ class RealAnalyzer:
             summary = self.generate_summary(product_info, sentiment, positives, negatives)
             audiences = self.get_audiences(product_info, reviews)
 
+        product_info['price_estimated'] = price_estimated
+
         trust_score = self.get_trust_score(reviews, review_count)
-        trend = self.get_trend()
+
+        # Risk seviyesi hesapla
+        if trust_score >= 85:
+            risk_label, risk_icon, risk_color = 'Düşük Risk', 'verified', 'text-primary-container'
+        elif trust_score >= 70:
+            risk_label, risk_icon, risk_color = 'Orta Risk', 'info', 'text-secondary'
+        else:
+            risk_label, risk_icon, risk_color = 'Yüksek Risk', 'warning', 'text-error'
+
+        trend = self.get_trend(sentiment)
 
         return {
             'product': product_info,
@@ -672,7 +802,12 @@ class RealAnalyzer:
             'audiences': audiences,
             'sentiment': sentiment,
             'trust_score': trust_score,
+            'risk_label': risk_label,
+            'risk_icon': risk_icon,
+            'risk_color': risk_color,
             'review_count': review_count,
+            'review_count_estimated': review_count_estimated,
+            'page_accessible': page_fetched,
             'trend': trend,
             'summary': summary,
             'url': self.url,
