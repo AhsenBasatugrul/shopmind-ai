@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}ShopMind AI - Akıllı Ürün Analizi{% endblock %}
+
+{% block content %}
+<!-- Main Content Area -->
+<main class="pt-[140px] px-container-padding pb-section-gap flex flex-col items-center justify-center min-h-[921px]">
+    <!-- Hero Section -->
+    <div class="max-w-4xl w-full text-center mb-12 flex flex-col items-center z-10 relative">
+        <h1 class="text-display-lg font-display-lg text-on-surface mb-6 leading-tight">
+            Ürün Yorumlarını <br/>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-container to-surface-tint">Saniyeler İçinde Yapay Zekâ</span> <br/>
+            ile Analiz Et
+        </h1>
+        <p class="text-body-lg font-body-lg text-on-surface-variant max-w-2xl mb-12">
+            Tek bir ürün linki yapıştır, yorum özetleri, artılar-eksiler ve AI analizini anında gör. High-tech analytical power at your fingertips.
+        </p>
+
+        <!-- Central Input Area -->
+        <div class="w-full max-w-3xl glass-panel rounded-xl p-2 flex flex-col md:flex-row gap-4 items-center shadow-2xl relative overflow-hidden">
+            <!-- Inner decorative line -->
+            <div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary-container/50 to-transparent"></div>
+            <div class="flex-grow w-full relative group h-14 input-glass rounded-lg flex items-center px-4 overflow-hidden">
+                <span class="material-symbols-outlined text-on-surface-variant mr-3 transition-colors group-focus-within:text-primary-container">link</span>
+                <input id="product-url" class="bg-transparent border-none outline-none w-full text-body-md font-body-md text-on-surface placeholder-on-surface-variant/50 focus:ring-0" placeholder="Trendyol, Amazon veya Hepsiburada ürün linkini yapıştır..." type="text"/>
+            </div>
+            <button id="analyze-btn" onclick="startAnalysis()" class="w-full md:w-auto h-14 bg-primary-container text-on-primary px-8 rounded-lg font-label-md text-label-md uppercase tracking-wider font-bold transition-all hover:scale-105 hover:bg-surface-tint neon-glow flex items-center justify-center gap-2 whitespace-nowrap">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+                Analyze
+            </button>
+        </div>
+
+        <!-- Quick Feature Pills -->
+        <div class="mt-8 flex flex-wrap justify-center gap-4">
+            <div class="bg-surface-variant/30 border border-white/5 rounded-full px-4 py-2 text-label-sm font-label-sm text-on-surface-variant flex items-center gap-2 backdrop-blur-sm">
+                <span class="material-symbols-outlined text-[16px] text-primary-container">bolt</span> Anında Özet
+            </div>
+            <div class="bg-surface-variant/30 border border-white/5 rounded-full px-4 py-2 text-label-sm font-label-sm text-on-surface-variant flex items-center gap-2 backdrop-blur-sm">
+                <span class="material-symbols-outlined text-[16px] text-primary-container">thumbs_up_down</span> Artılar & Eksiler
+            </div>
+            <div class="bg-surface-variant/30 border border-white/5 rounded-full px-4 py-2 text-label-sm font-label-sm text-on-surface-variant flex items-center gap-2 backdrop-blur-sm">
+                <span class="material-symbols-outlined text-[16px] text-primary-container">psychology</span> Duygu Analizi
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+function startAnalysis() {
+    const url = document.getElementById('product-url').value.trim();
+    if (!url) {
+        alert('Lütfen bir ürün linki girin!');
+        return;
+    }
+
+    // Show loading first
+    window.location.href = '/loading?url=' + encodeURIComponent(url);
+}
+
+document.getElementById('product-url').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        startAnalysis();
+    }
+});
+</script>
+{% endblock %}

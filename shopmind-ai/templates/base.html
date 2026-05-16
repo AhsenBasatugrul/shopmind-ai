@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html class="dark" lang="tr">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>{% block title %}ShopMind AI{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary": "#053900",
+                        "secondary-container": "#474746",
+                        "surface-bright": "#2c3a4c",
+                        "on-tertiary-fixed-variant": "#474646",
+                        "on-primary-container": "#107100",
+                        "primary-fixed": "#79ff5b",
+                        "on-secondary-container": "#b7b5b4",
+                        "surface-variant": "#273647",
+                        "primary-container": "#39ff14",
+                        "on-tertiary": "#313030",
+                        "on-tertiary-container": "#626161",
+                        "surface-container-lowest": "#010f1f",
+                        "inverse-on-surface": "#233143",
+                        "tertiary-fixed-dim": "#c9c6c5",
+                        "primary": "#efffe3",
+                        "surface": "#051424",
+                        "outline-variant": "#3c4b35",
+                        "tertiary": "#fdf9f9",
+                        "inverse-surface": "#d4e4fa",
+                        "on-secondary": "#313030",
+                        "on-error": "#690005",
+                        "on-error-container": "#ffdad6",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "tertiary-fixed": "#e5e2e1",
+                        "on-background": "#d4e4fa",
+                        "inverse-primary": "#106e00",
+                        "on-primary-fixed-variant": "#095300",
+                        "error-container": "#93000a",
+                        "surface-container-highest": "#273647",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "secondary": "#c8c6c5",
+                        "on-secondary-fixed-variant": "#474746",
+                        "surface-container-low": "#0d1c2d",
+                        "on-surface": "#d4e4fa",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "tertiary-container": "#e0dddc",
+                        "surface-container-high": "#1c2b3c",
+                        "surface-container": "#122131",
+                        "outline": "#85967c",
+                        "surface-tint": "#2ae500",
+                        "background": "#051424",
+                        "on-surface-variant": "#baccb0",
+                        "primary-fixed-dim": "#2ae500",
+                        "on-primary-fixed": "#022100",
+                        "secondary-fixed": "#e5e2e1",
+                        "surface-dim": "#051424"
+                    },
+                    borderRadius: {
+                        DEFAULT: "1rem",
+                        lg: "2rem",
+                        xl: "3rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        "section-gap": "64px",
+                        "container-padding": "24px",
+                        gutter: "16px",
+                        base: "8px"
+                    },
+                    fontFamily: {
+                        "headline-lg-mobile": ["Sora"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-md": ["Sora"],
+                        "headline-lg": ["Sora"],
+                        "label-md": ["Inter"],
+                        "display-lg": ["Sora"],
+                        "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-lg-mobile": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "label-sm": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "label-md": ["14px", { lineHeight: "20px", letterSpacing: "0.02em", fontWeight: "500" }],
+                        "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .grid-pattern {
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+        .neon-glow {
+            box-shadow: 0px 0px 15px rgba(57, 255, 20, 0.4);
+        }
+        .glass-panel {
+            background: rgba(5, 20, 36, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+        }
+        .glass-panel::before {
+            content: "";
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            z-index: -1;
+            margin: -1px;
+            border-radius: inherit;
+            background: linear-gradient(to bottom right, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+        }
+        .input-glass {
+            background: rgba(35, 49, 67, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .input-glass:focus-within {
+            border-color: #39ff14;
+            box-shadow: inset 0 0 10px rgba(57, 255, 20, 0.1);
+        }
+        .neon-spinner {
+            width: 120px;
+            height: 120px;
+            border: 4px solid rgba(57, 255, 20, 0.1);
+            border-top: 4px solid #39ff14;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            box-shadow: 0px 0px 20px rgba(57, 255, 20, 0.4);
+            position: relative;
+        }
+        .neon-spinner::before {
+            content: '';
+            position: absolute;
+            top: -4px; left: -4px; right: -4px; bottom: -4px;
+            border-radius: 50%;
+            border: 4px solid transparent;
+            border-top-color: #39ff14;
+            filter: blur(8px);
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .glow-text {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { text-shadow: 0 0 10px rgba(57, 255, 20, 0.5); opacity: 0.8; }
+            50% { text-shadow: 0 0 20px rgba(57, 255, 20, 0.9); opacity: 1; }
+        }
+        .glass-card-inner-glow {
+            position: relative;
+        }
+        .glass-card-inner-glow::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+        }
+        .neon-border-top {
+            border-top: 2px solid #39ff14;
+        }
+        .text-glow {
+            text-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        .animate-fade-in-delay-1 { animation-delay: 0.1s; opacity: 0; }
+        .animate-fade-in-delay-2 { animation-delay: 0.2s; opacity: 0; }
+        .animate-fade-in-delay-3 { animation-delay: 0.3s; opacity: 0; }
+        .animate-fade-in-delay-4 { animation-delay: 0.4s; opacity: 0; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-background text-on-surface min-h-screen relative overflow-x-hidden font-body-md text-body-md">
+    <!-- Global Background & Grid -->
+    <div class="fixed inset-0 z-[-2] bg-surface-container-lowest"></div>
+    <div class="fixed inset-0 z-[-1] grid-pattern pointer-events-none"></div>
+    <!-- Subtle Neon Light Leaks -->
+    <div class="fixed top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-primary-container/5 blur-[120px] z-[-1] pointer-events-none"></div>
+    <div class="fixed bottom-[10%] right-[10%] w-[400px] h-[400px] rounded-full bg-primary-container/10 blur-[150px] z-[-1] pointer-events-none"></div>
+
+    <!-- TopNavBar -->
+    <header class="bg-surface/10 dark:bg-surface/10 backdrop-blur-3xl fixed top-0 w-full z-50 border-b border-white/10 shadow-[0px_0px_15px_rgba(57,255,20,0.2)]">
+        <div class="flex justify-between items-center px-container-padding h-20 max-w-full mx-auto">
+            <a href="/" class="text-headline-md font-headline-md font-bold tracking-tighter text-primary dark:text-primary-fixed hover:opacity-80 transition-opacity">
+                ShopMind AI
+            </a>
+            <nav class="hidden md:flex gap-gutter">
+                <a class="{% if request.endpoint == 'index' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/">Home</a>
+                <a class="{% if request.endpoint == 'results' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/">Analyze</a>
+                <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5 transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="#">About</a>
+            </nav>
+            <a class="text-primary dark:text-primary-fixed hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5 transition-all duration-300 px-4 py-2 rounded text-label-md font-label-md border border-white/10 flex items-center gap-2" href="https://github.com" target="_blank">
+                GitHub
+                <span class="material-symbols-outlined text-[18px]">open_in_new</span>
+            </a>
+        </div>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <!-- Footer -->
+    <footer class="bg-surface-container-lowest dark:bg-surface-container-lowest w-full py-12 border-t border-white/5 flex flex-col items-center justify-center gap-4 px-container-padding mt-auto">
+        <div class="text-label-md font-headline-md font-bold text-primary">ShopMind AI</div>
+        <div class="flex gap-6">
+            <a class="text-on-surface-variant hover:text-primary-fixed text-label-sm font-label-sm transition-colors duration-200" href="#">Privacy Policy</a>
+            <a class="text-on-surface-variant hover:text-primary-fixed text-label-sm font-label-sm transition-colors duration-200" href="#">Terms of Service</a>
+            <a class="text-on-surface-variant hover:text-primary-fixed text-label-sm font-label-sm transition-colors duration-200" href="#">API Documentation</a>
+        </div>
+        <div class="text-label-sm font-label-sm text-on-surface-variant">© 2024 ShopMind AI. Powered by Neural Core.</div>
+    </footer>
+</body>
+</html>

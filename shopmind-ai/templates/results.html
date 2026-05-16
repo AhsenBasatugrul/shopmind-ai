@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}ShopMind AI - Analiz Sonuçları{% endblock %}
+
+{% block content %}
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-28 pb-12 px-container-padding max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+    <!-- Left / Center Content -->
+    <div class="lg:col-span-8 flex flex-col gap-6">
+
+        <!-- Product Card -->
+        <div class="glass-panel rounded-lg p-6 flex flex-col md:flex-row gap-6 items-center animate-fade-in">
+            <div class="w-40 h-40 shrink-0 bg-surface-container rounded-DEFAULT overflow-hidden border border-white/5 relative">
+                <img alt="{{ data.product.name }}" class="w-full h-full object-cover" src="{{ data.product.image }}" onerror="this.src='https://via.placeholder.com/400x400/051424/39ff14?text={{ data.product.name[:1] }}'"/>
+                <div class="absolute top-2 right-2 bg-surface/80 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 border border-white/10">
+                    <span class="material-symbols-outlined text-[14px] text-primary-container" style="font-variation-settings: 'FILL' 1;">star</span>
+                    <span class="font-label-sm text-label-sm text-primary">{{ data.product.rating }}</span>
+                </div>
+            </div>
+            <div class="flex-grow flex flex-col justify-center text-center md:text-left">
+                <span class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-widest mb-1">{{ data.product.brand }}</span>
+                <h1 class="text-headline-md font-headline-md text-primary mb-2">{{ data.product.name }}</h1>
+                <div class="text-display-lg font-display-lg text-primary-container mb-4">{{ data.product.price }}</div>
+                <div class="flex flex-wrap gap-2 justify-center md:justify-start">
+                    <span class="inline-flex items-center gap-1 bg-primary-container/10 text-primary-container px-3 py-1 rounded-full border border-primary-container/30 text-label-sm font-label-sm">
+                        <span class="material-symbols-outlined text-[16px]">verified</span> Verified Product
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bento Grid Insights -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <!-- AI Tavsiyesi (Hero Insight) -->
+            <div class="md:col-span-2 glass-panel rounded-lg p-6 neon-border-top neon-glow relative overflow-hidden flex items-center justify-between animate-fade-in animate-fade-in-delay-1">
+                <div class="absolute -right-10 -top-10 text-primary-container/5 transform rotate-12">
+                    <span class="material-symbols-outlined text-[150px]" style="font-variation-settings: 'FILL' 1;">{{ data.recommendation_icon }}</span>
+                </div>
+                <div>
+                    <h2 class="text-label-md font-label-md text-on-surface-variant mb-1">AI Kararı</h2>
+                    <div class="text-headline-lg font-headline-lg text-primary flex items-center gap-3">
+                        {{ data.recommendation }}
+                    </div>
+                </div>
+                <div class="h-16 w-16 rounded-full border-4 border-primary-container flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(57,255,20,0.3)] bg-surface">
+                    <span class="material-symbols-outlined text-primary-container text-[32px]" style="font-variation-settings: 'FILL' 1;">done</span>
+                </div>
+            </div>
+
+            <!-- Genel Özet -->
+            <div class="md:col-span-2 glass-panel rounded-DEFAULT p-5 animate-fade-in animate-fade-in-delay-2">
+                <h3 class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]">summarize</span> Genel AI Özeti
+                </h3>
+                <p class="text-body-md font-body-md text-on-surface/90 leading-relaxed">
+                    {{ data.summary }}
+                </p>
+            </div>
+
+            <!-- En Sevilenler -->
+            <div class="glass-panel rounded-DEFAULT p-5 animate-fade-in animate-fade-in-delay-3">
+                <h3 class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px] text-primary-container">favorite</span> En Sevilen Özellikler
+                </h3>
+                <ul class="space-y-3">
+                    {% for positive in data.positives %}
+                    <li class="flex items-start gap-2 border-b border-white/5 pb-2 hover:bg-white/5 transition-colors p-1 rounded last:border-0 last:pb-0">
+                        <span class="material-symbols-outlined text-primary-container text-[20px] shrink-0" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        <span class="text-label-md font-label-md">{{ positive }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Şikayetler -->
+            <div class="glass-panel rounded-DEFAULT p-5 animate-fade-in animate-fade-in-delay-3">
+                <h3 class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px] text-error">warning</span> En Çok Şikayet Edilenler
+                </h3>
+                <ul class="space-y-3">
+                    {% for negative in data.negatives %}
+                    <li class="flex items-start gap-2 border-b border-white/5 pb-2 hover:bg-white/5 transition-colors p-1 rounded last:border-0 last:pb-0">
+                        <span class="material-symbols-outlined text-error text-[20px] shrink-0" style="font-variation-settings: 'FILL' 1;">error</span>
+                        <span class="text-label-md font-label-md text-on-surface/80">{{ negative }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Kimler İçin -->
+            <div class="md:col-span-2 glass-panel rounded-DEFAULT p-5 flex flex-col sm:flex-row items-center gap-4 animate-fade-in animate-fade-in-delay-4">
+                <h3 class="text-label-sm font-label-sm text-on-surface-variant uppercase shrink-0">Kimler İçin Uygun?</h3>
+                <div class="flex flex-wrap gap-2">
+                    {% for audience in data.audiences %}
+                    <span class="bg-surface-container-high border border-white/10 px-3 py-1.5 rounded-full text-label-sm font-label-sm text-primary flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">{{ audience.icon }}</span> {{ audience.name }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Panel (Data/Charts) -->
+    <div class="lg:col-span-4 flex flex-col gap-4">
+
+        <!-- Trust Score -->
+        <div class="glass-panel rounded-lg p-6 flex flex-col items-center justify-center text-center animate-fade-in">
+            <h3 class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-4 w-full text-left">Sahte Yorum Riski</h3>
+            <div class="relative w-32 h-32 mb-4">
+                <!-- Circular Progress Track -->
+                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" fill="none" r="45" stroke="rgba(255,255,255,0.05)" stroke-width="8"></circle>
+                    <circle id="trust-circle" class="transition-all duration-1000 ease-out" cx="50" cy="50" fill="none" r="45" stroke="#39ff14" stroke-dasharray="282.7" stroke-dashoffset="282.7" stroke-width="8" style="filter: drop-shadow(0 0 4px rgba(57,255,20,0.5));"></circle>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center flex-col">
+                    <span class="text-headline-md font-headline-md text-primary">{{ data.trust_score }}%</span>
+                </div>
+            </div>
+            <div class="text-label-md font-label-md text-primary-container">Güvenilir Yorum Havuzu</div>
+            <div class="text-label-sm font-label-sm text-on-surface-variant mt-1">{{ data.review_count }} yorum analiz edildi</div>
+        </div>
+
+        <!-- Sentiment Ratio -->
+        <div class="glass-panel rounded-lg p-6 animate-fade-in animate-fade-in-delay-1">
+            <h3 class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-4">Duygu Analizi (Sentiment)</h3>
+            <div class="space-y-4">
+                <!-- Positive -->
+                <div>
+                    <div class="flex justify-between text-label-sm font-label-sm mb-1">
+                        <span class="text-primary-container">Pozitif</span>
+                        <span>{{ data.sentiment.positive }}%</span>
+                    </div>
+                    <div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden shadow-inner">
+                        <div class="h-full bg-primary-container transition-all duration-1000" style="width: 0%" data-width="{{ data.sentiment.positive }}%">
+                            <div class="absolute right-0 top-0 bottom-0 w-4 bg-white/50 blur-[2px]"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Neutral -->
+                <div>
+                    <div class="flex justify-between text-label-sm font-label-sm mb-1">
+                        <span class="text-secondary">Nötr</span>
+                        <span>{{ data.sentiment.neutral }}%</span>
+                    </div>
+                    <div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden shadow-inner">
+                        <div class="h-full bg-secondary transition-all duration-1000" style="width: 0%" data-width="{{ data.sentiment.neutral }}%"></div>
+                    </div>
+                </div>
+                <!-- Negative -->
+                <div>
+                    <div class="flex justify-between text-label-sm font-label-sm mb-1">
+                        <span class="text-error">Negatif</span>
+                        <span>{{ data.sentiment.negative }}%</span>
+                    </div>
+                    <div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden shadow-inner">
+                        <div class="h-full bg-error transition-all duration-1000" style="width: 0%" data-width="{{ data.sentiment.negative }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Satisfaction Trend -->
+        <div class="glass-panel rounded-lg p-6 flex-grow animate-fade-in animate-fade-in-delay-2">
+            <h3 class="text-label-sm font-label-sm text-on-surface-variant uppercase mb-4">Memnuniyet Trendi</h3>
+            <div class="h-32 w-full flex items-end justify-between gap-1 mt-auto">
+                {% for i in range(data.trend.months|length) %}
+                {% set month = data.trend.months[i] %}
+                {% set value = data.trend.values[i] %}
+                {% set is_last = (i == data.trend.months|length - 1) %}
+                <div class="w-1/6 {{ 'bg-primary-container/80 shadow-[0_-5px_15px_rgba(57,255,20,0.2)]' if is_last else 'bg-surface-container-highest hover:bg-white/10' }} rounded-t-sm transition-all duration-1000 relative group" style="height: 0%" data-height="{{ value }}%">
+                    <div class="absolute -top-6 left-1/2 -translate-x-1/2 text-label-sm {{ 'text-primary-container opacity-100' if is_last else 'opacity-0 group-hover:opacity-100' }} transition-opacity">{{ month }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+// Animate trust score circle
+document.addEventListener('DOMContentLoaded', function() {
+    const trustCircle = document.getElementById('trust-circle');
+    const trustScore = {{ data.trust_score }};
+    const circumference = 282.7;
+    const offset = circumference - (trustScore / 100) * circumference;
+
+    setTimeout(() => {
+        trustCircle.style.strokeDashoffset = offset;
+    }, 300);
+
+    // Animate sentiment bars
+    document.querySelectorAll('[data-width]').forEach(bar => {
+        setTimeout(() => {
+            bar.style.width = bar.getAttribute('data-width');
+        }, 500);
+    });
+
+    // Animate trend bars
+    document.querySelectorAll('[data-height]').forEach(bar => {
+        setTimeout(() => {
+            bar.style.height = bar.getAttribute('data-height');
+        }, 700);
+    });
+});
+</script>
+{% endblock %}

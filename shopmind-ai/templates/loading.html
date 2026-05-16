@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}ShopMind AI - Analiz Ediliyor...{% endblock %}
+
+{% block content %}
+<!-- Main Loading Container -->
+<main class="relative z-10 w-full max-w-md px-container-padding flex flex-col items-center justify-center gap-section-gap min-h-screen mx-auto">
+    <!-- Glassmorphism Card Wrapper -->
+    <div class="glass-card-inner-glow bg-surface/80 backdrop-blur-[30px] rounded-xl p-12 flex flex-col items-center justify-center w-full shadow-2xl relative overflow-hidden">
+        <!-- Subtle Grid Overlay inside card -->
+        <div class="absolute inset-0 pointer-events-none opacity-20" style="background-image: linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px); background-size: 16px 16px;"></div>
+
+        <!-- Central Animation -->
+        <div class="relative z-10 flex items-center justify-center mb-8">
+            <div class="neon-spinner"></div>
+            <!-- Icon in the center -->
+            <span class="material-symbols-outlined absolute text-primary-container text-4xl" style="font-variation-settings: 'FILL' 1;">psychology</span>
+        </div>
+
+        <!-- Loading Text -->
+        <div class="relative z-10 text-center flex flex-col gap-base">
+            <h2 class="font-headline-lg text-headline-lg md:font-headline-md md:text-headline-md text-primary-fixed glow-text tracking-tight">
+                Yorumlar analiz ediliyor...
+            </h2>
+            <p class="font-body-md text-body-md text-on-surface-variant max-w-[250px] mx-auto opacity-70">
+                Applying neural models to extract insights and sentiment.
+            </p>
+        </div>
+
+        <!-- Progress Track (Decorative) -->
+        <div class="relative z-10 w-full h-1 bg-surface-container-highest rounded-full mt-8 overflow-hidden shadow-inner">
+            <div id="progress-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-transparent via-primary-container to-primary-container/80 w-0 rounded-full transition-all duration-300"></div>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="status-text" class="relative z-10 text-center mt-4 text-label-sm font-label-sm text-on-surface-variant/60">
+            URL doğrulanıyor...
+        </div>
+    </div>
+
+    <!-- Branding / Footer of loading screen -->
+    <div class="text-center flex flex-col items-center gap-2 opacity-50">
+        <span class="font-label-md text-label-md text-on-surface uppercase tracking-widest flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">memory</span>
+            Powered by Neural Core
+        </span>
+    </div>
+</main>
+
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+const productUrl = urlParams.get('url');
+
+const statusMessages = [
+    "URL doğrulanıyor...",
+    "Ürün sayfası yükleniyor...",
+    "Yorumlar çekiliyor...",
+    "Duygu analizi yapılıyor...",
+    "AI modelleri çalıştırılıyor...",
+    "Sonuçlar derleniyor..."
+];
+
+let progress = 0;
+const progressBar = document.getElementById('progress-bar');
+const statusText = document.getElementById('status-text');
+
+function updateProgress() {
+    progress += Math.random() * 15 + 5;
+    if (progress > 95) progress = 95;
+    progressBar.style.width = progress + '%';
+
+    const msgIndex = Math.min(Math.floor(progress / 16), statusMessages.length - 1);
+    statusText.textContent = statusMessages[msgIndex];
+}
+
+// Start progress animation
+const progressInterval = setInterval(updateProgress, 800);
+
+// Send analysis request
+fetch('/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: productUrl })
+})
+.then(response => response.json())
+.then(data => {
+    clearInterval(progressInterval);
+    progressBar.style.width = '100%';
+    statusText.textContent = "Analiz tamamlandı! Yönlendiriliyor...";
+    setTimeout(() => {
+        window.location.href = data.redirect || '/results';
+    }, 500);
+})
+.catch(error => {
+    clearInterval(progressInterval);
+    statusText.textContent = "Bir hata oluştu. Yeniden deneyin.";
+    statusText.classList.add('text-error');
+    console.error('Error:', error);
+});
+</script>
+{% endblock %}
