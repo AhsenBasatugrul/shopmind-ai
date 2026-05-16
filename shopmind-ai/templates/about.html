@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}ShopMind AI - Hakkında{% endblock %}
+
+{% block content %}
+<main class="pt-[140px] px-container-padding pb-section-gap min-h-screen">
+    <div class="max-w-4xl mx-auto glass-panel rounded-xl p-10 shadow-2xl">
+        <h1 class="text-headline-lg font-headline-lg text-primary mb-6">ShopMind AI Hakkında</h1>
+        <p class="text-body-lg font-body-lg text-on-surface-variant mb-6 leading-relaxed">
+            ShopMind AI, ürün sayfalarındaki kullanıcı yorumlarını hızlıca analiz ederek size artıları, eksileri ve genel memnuniyet skorunu sunar.
+            Bu uygulama Flask tabanlıdır ve ürün yorumlarından duygu analizi yaparak kullanıcıların satın alma kararını destekler.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="glass-panel rounded-lg p-6 bg-surface-container/90">
+                <h2 class="text-label-md font-label-md text-on-surface-variant uppercase mb-3">Nasıl çalışır?</h2>
+                <p class="text-body-md font-body-md text-on-surface-variant leading-relaxed">
+                    Ürün linkini yapıştırın, analiz butonuna tıklayın ve sistem otomatik olarak sayfayı tarayıp yorumları çıkarır.
+                    Ardından AI destekli değerlendirme, kullanıcı duygusu, tavsiye ve trend bilgileri görüntülenir.
+                </p>
+            </div>
+            <div class="glass-panel rounded-lg p-6 bg-surface-container/90">
+                <h2 class="text-label-md font-label-md text-on-surface-variant uppercase mb-3">Neler sunar?</h2>
+                <ul class="space-y-3 text-body-md font-body-md text-on-surface-variant">
+                    <li>✅ Ürün adı, marka ve fiyat bilgisi</li>
+                    <li>✅ Kullanıcı duygu dağılımı</li>
+                    <li>✅ Artılar / eksiler listesi</li>
+                    <li>✅ Hangi kitle için daha uygun olduğu</li>
+                    <li>✅ Güvenilirlik skorları ve trend görünümü</li>
+                </ul>
+            </div>
+        </div>
+        <div class="mt-8 text-body-md font-body-md text-on-surface-variant leading-relaxed">
+            <p>
+                Bu sayfa, uygulamanın çalışma mantığını açıklamak ve kullanıcıların daha hızlı yönlenmesini sağlamak için oluşturuldu.
+                Herhangi bir ürün linki ile deneyebilirsiniz.
+            </p>
+            <p class="mt-4">
+                Ana sayfaya dönmek için <a href="/" class="text-primary-container hover:underline">buraya tıklayın</a>.
+            </p>
+        </div>
+    </div>
+</main>
+{% endblock %}

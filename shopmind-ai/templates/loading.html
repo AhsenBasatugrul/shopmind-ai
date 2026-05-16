@@ -73,35 +73,40 @@ function updateProgress() {
     statusText.textContent = statusMessages[msgIndex];
 }
 
-// Start progress animation
-const progressInterval = setInterval(updateProgress, 800);
+if (!productUrl) {
+    statusText.innerHTML = '<span style="color:#ffb4ab">⚠ URL bulunamadı. Ana sayfaya yönlendiriliyorsunuz...</span>';
+    setTimeout(() => { window.location.href = '/'; }, 1800);
+} else {
+    // Start progress animation
+    const progressInterval = setInterval(updateProgress, 800);
 
-// Send analysis request
-fetch('/analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url: productUrl })
-})
-.then(response => response.json().then(data => ({ status: response.status, data })))
-.then(({ status, data }) => {
-    clearInterval(progressInterval);
-    if (data.success) {
-        progressBar.style.width = '100%';
-        statusText.textContent = "Analiz tamamlandı! Yönlendiriliyor...";
-        setTimeout(() => { window.location.href = data.redirect || '/results'; }, 500);
-    } else {
-        progressBar.style.width = '100%';
-        progressBar.classList.remove('bg-gradient-to-r', 'from-transparent', 'via-primary-container', 'to-primary-container/80');
-        progressBar.classList.add('bg-error');
-        statusText.innerHTML = '<span style="color:#ffb4ab">⚠ ' + (data.error || 'Ürün sayfasına erişilemedi.') + '</span>';
-        document.querySelector('.neon-spinner').style.borderTopColor = '#ffb4ab';
-        setTimeout(() => { window.history.back(); }, 4000);
-    }
-})
-.catch(error => {
-    clearInterval(progressInterval);
-    statusText.innerHTML = '<span style="color:#ffb4ab">⚠ Sunucuya bağlanılamadı. Yeniden deneyin.</span>';
-    console.error('Error:', error);
-});
+    // Send analysis request
+    fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: productUrl })
+    })
+    .then(response => response.json().then(data => ({ status: response.status, data })))
+    .then(({ status, data }) => {
+        clearInterval(progressInterval);
+        if (data.success) {
+            progressBar.style.width = '100%';
+            statusText.textContent = "Analiz tamamlandı! Yönlendiriliyor...";
+            setTimeout(() => { window.location.href = data.redirect || '/results'; }, 500);
+        } else {
+            progressBar.style.width = '100%';
+            progressBar.classList.remove('bg-gradient-to-r', 'from-transparent', 'via-primary-container', 'to-primary-container/80');
+            progressBar.classList.add('bg-error');
+            statusText.innerHTML = '<span style="color:#ffb4ab">⚠ ' + (data.error || 'Ürün sayfasına erişilemedi.') + '</span>';
+            document.querySelector('.neon-spinner').style.borderTopColor = '#ffb4ab';
+            setTimeout(() => { window.history.back(); }, 4000);
+        }
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        statusText.innerHTML = '<span style="color:#ffb4ab">⚠ Sunucuya bağlanılamadı. Yeniden deneyin.</span>';
+        console.error('Error:', error);
+    });
+}
 </script>
 {% endblock %}

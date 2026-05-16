@@ -255,8 +255,8 @@
             </a>
             <nav class="hidden md:flex gap-gutter">
                 <a class="{% if request.endpoint == 'index' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/">Home</a>
-                <a class="{% if request.endpoint == 'results' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/">Analyze</a>
-                <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5 transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="#">About</a>
+                <a class="{% if request.endpoint == 'analyze_route' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/analyze">Analyze</a>
+                <a class="{% if request.endpoint == 'about' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/about">About</a>
             </nav>
 
             <!-- Auth Area -->

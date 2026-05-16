@@ -7,6 +7,11 @@ import hashlib
 import os
 import random
 from datetime import datetime
+from google import genai as google_genai
+
+GEMINI_API_KEY = "AIzaSyCn_n1W52G9ao_NEwkjUdeAmAhGw8vtB2k"
+_genai_client = google_genai.Client(api_key=GEMINI_API_KEY)
+_GEMINI_MODEL = "gemini-2.5-flash"
 
 app = Flask(__name__)
 app.secret_key = "shopmind-ai-secret-key-2024"
@@ -358,25 +363,59 @@ class RealAnalyzer:
         except Exception:
             return 0
 
+    def _get_og_image(self):
+        for attr, name in [('property', 'og:image'), ('property', 'og:image:secure_url'),
+                           ('name', 'twitter:image')]:
+            el = self.soup.select_one(f'meta[{attr}="{name}"]')
+            if el and el.get('content'):
+                return el['content']
+        return ''
+
+    def _get_meta_description(self):
+        for attr, name in [('property', 'og:description'), ('name', 'description'),
+                           ('name', 'twitter:description')]:
+            el = self.soup.select_one(f'meta[{attr}="{name}"]')
+            if el and el.get('content'):
+                return el['content'][:400]
+        return ''
+
     # ---- Analysis ----
 
     def analyze_sentiment(self, reviews):
         if not reviews:
             return {'positive': 65, 'neutral': 25, 'negative': 10}
-        pos = neg = 0
-        for r in reviews:
-            rl = r.lower()
-            p = sum(1 for w in self.POSITIVE_WORDS if w in rl)
-            n = sum(1 for w in self.NEGATIVE_WORDS if w in rl)
-            if p > n:
-                pos += 1
-            elif n > p:
-                neg += 1
-        total = len(reviews)
-        positive = round(pos / total * 100)
-        negative = round(neg / total * 100)
-        neutral = max(0, 100 - positive - negative)
-        return {'positive': positive, 'neutral': neutral, 'negative': negative}
+        try:
+            sample = reviews[:30]
+            reviews_text = "\n".join(f"- {r}" for r in sample)
+            prompt = (
+                "Aşağıdaki ürün yorumlarını analiz et ve yüzde olarak pozitif, nötr ve negatif dağılımını ver. "
+                "Sadece JSON formatında yanıt ver, başka hiçbir şey yazma. Örnek: {\"positive\": 70, \"neutral\": 20, \"negative\": 10}\n\n"
+                f"Yorumlar:\n{reviews_text}"
+            )
+            resp = _genai_client.models.generate_content(model=_GEMINI_MODEL, contents=prompt)
+            text = resp.text.strip().strip("```json").strip("```").strip()
+            data = json.loads(text)
+            pos = max(0, min(100, int(data.get("positive", 65))))
+            neg = max(0, min(100, int(data.get("negative", 10))))
+            neu = max(0, 100 - pos - neg)
+            return {"positive": pos, "neutral": neu, "negative": neg}
+        except Exception as e:
+            print(f"[Gemini sentiment error] {e}")
+            # Fallback: keyword tabanlı
+            pos = neg = 0
+            for r in reviews:
+                rl = r.lower()
+                p = sum(1 for w in self.POSITIVE_WORDS if w in rl)
+                n = sum(1 for w in self.NEGATIVE_WORDS if w in rl)
+                if p > n:
+                    pos += 1
+                elif n > p:
+                    neg += 1
+            total = len(reviews)
+            positive = round(pos / total * 100)
+            negative = round(neg / total * 100)
+            neutral = max(0, 100 - positive - negative)
+            return {'positive': positive, 'neutral': neutral, 'negative': negative}
 
     def extract_aspects(self, reviews, aspect_map, max_items=5):
         all_text = ' '.join(reviews).lower()
@@ -403,6 +442,30 @@ class RealAnalyzer:
 
     def get_recommendation(self, sentiment, rating):
         pos = sentiment.get('positive', 65)
+        neg = sentiment.get('negative', 10)
+        try:
+            prompt = (
+                f"Bir e-ticaret ürününün analiz sonuçları: puan={rating}/5, pozitif yorum %{pos}, negatif yorum %{neg}.\n"
+                "Bu ürün için aşağıdaki 4 tavsiyeden yalnızca birini seç ve sadece o metni yaz:\n"
+                "- Kesinlikle Alınır\n"
+                "- Tavsiye Edilir\n"
+                "- Değerlendirilebilir\n"
+                "- Dikkatli Olunmalı"
+            )
+            resp = _genai_client.models.generate_content(model=_GEMINI_MODEL, contents=prompt)
+            text = resp.text.strip()
+            icon_map = {
+                'Kesinlikle Alınır': 'thumb_up',
+                'Tavsiye Edilir': 'recommend',
+                'Değerlendirilebilir': 'lightbulb',
+                'Dikkatli Olunmalı': 'warning',
+            }
+            for label, icon in icon_map.items():
+                if label in text:
+                    return label, icon
+        except Exception as e:
+            print(f"[Gemini recommendation error] {e}")
+        # Fallback
         if pos >= 75 or (rating and rating >= 4.5):
             return 'Kesinlikle Alınır', 'thumb_up'
         if pos >= 60 or (rating and rating >= 4.0):
@@ -434,30 +497,111 @@ class RealAnalyzer:
         values.append(random.randint(70, 95))
         return {'months': months, 'values': values}
 
+    def gemini_analyze(self, product_info, reviews, description):
+        name = product_info.get('name', '')
+        brand = product_info.get('brand', '')
+        price = product_info.get('price', '')
+        rating = product_info.get('rating', 0)
+        review_count = product_info.get('review_count', 0)
+        category = product_info.get('category', '')
+
+        context_lines = [f"Ürün: {(brand + ' ' + name).strip()}"]
+        if category:
+            context_lines.append(f"Kategori: {category}")
+        if price:
+            context_lines.append(f"Fiyat: {price}")
+        if rating:
+            context_lines.append(f"Puan: {rating}/5")
+        if review_count:
+            context_lines.append(f"Toplam yorum sayısı: {review_count}")
+        if description:
+            context_lines.append(f"Açıklama: {description}")
+
+        review_section = ""
+        if reviews:
+            review_text = "\n".join(f"- {r}" for r in reviews[:25])
+            review_section = f"\n\nKullanıcı Yorumları:\n{review_text}"
+
+        prompt = (
+            "\n".join(context_lines) + review_section +
+            "\n\nBu ürüne özel kapsamlı bir analiz yap. SADECE aşağıdaki JSON formatında yanıt ver, "
+            "başka hiçbir şey ekleme:\n"
+            '{\n'
+            '  "sentiment": {"positive": <0-100>, "neutral": <0-100>, "negative": <0-100>},\n'
+            '  "positives": ["<bu ürüne özel olumlu özellik>", "...", "..."],\n'
+            '  "negatives": ["<bu ürüne özel olumsuz özellik>", "..."],\n'
+            '  "summary": "<bu ürüne özel 2-3 cümlelik doğal Türkçe özet>",\n'
+            '  "recommendation": "<tam olarak şunlardan biri: Kesinlikle Alınır | Tavsiye Edilir | Değerlendirilebilir | Dikkatli Olunmalı>",\n'
+            '  "audiences": [{"name": "<hedef kitle>", "icon": "<material icon ismi>"}, ...]\n'
+            '}'
+        )
+
+        resp = _genai_client.models.generate_content(model=_GEMINI_MODEL, contents=prompt)
+        text = resp.text.strip()
+        text = re.sub(r'^```(?:json)?\s*', '', text)
+        text = re.sub(r'\s*```$', '', text)
+        data = json.loads(text)
+
+        s = data.get('sentiment', {})
+        pos = max(0, min(100, int(s.get('positive', 65))))
+        neg = max(0, min(100, int(s.get('negative', 10))))
+        neu = max(0, 100 - pos - neg)
+
+        icon_map = {
+            'Kesinlikle Alınır': 'thumb_up',
+            'Tavsiye Edilir': 'recommend',
+            'Değerlendirilebilir': 'lightbulb',
+            'Dikkatli Olunmalı': 'warning',
+        }
+        rec = data.get('recommendation', 'Değerlendirilebilir')
+        rec_icon = next((v for k, v in icon_map.items() if k in rec), 'lightbulb')
+        rec = next((k for k in icon_map if k in rec), 'Değerlendirilebilir')
+
+        return {
+            'sentiment': {'positive': pos, 'neutral': neu, 'negative': neg},
+            'positives': [p for p in data.get('positives', []) if p][:5],
+            'negatives': [n for n in data.get('negatives', []) if n][:5],
+            'summary': data.get('summary', ''),
+            'recommendation': rec,
+            'recommendation_icon': rec_icon,
+            'audiences': data.get('audiences', [])[:5],
+        }
+
     def generate_summary(self, product_info, sentiment, positives, negatives):
         name = product_info.get('name', 'Bu ürün')
         brand = product_info.get('brand', '')
         review_count = product_info.get('review_count', 0)
-        pos_pct = sentiment.get('positive', 65)
         full_name = f"{brand} {name}".strip() if brand else name
-
-        count_str = f"{review_count} yorum" if review_count > 0 else "mevcut yorumlar"
-
-        if pos_pct >= 75:
-            verdict = f"kullanıcıların %{pos_pct}'i üründen memnun"
-        elif pos_pct >= 55:
-            verdict = f"kullanıcı görüşleri genel olarak olumlu (%{pos_pct} pozitif)"
-        elif pos_pct >= 40:
-            verdict = f"yorumlar karışık (%{pos_pct} olumlu, %{sentiment.get('negative', 0)} olumsuz)"
-        else:
-            verdict = f"kullanıcıların büyük çoğunluğu üründen memnun değil (%{sentiment.get('negative', 0)} negatif)"
-
-        summary = f"{full_name} için {count_str} analiz edildi; {verdict}."
-        if positives:
-            summary += f" Öne çıkan olumlu yönler: {', '.join(positives[:2])}."
-        if negatives:
-            summary += f" En çok şikayet edilen konular: {', '.join(negatives[:1])}."
-        return summary
+        try:
+            prompt = (
+                f"'{full_name}' adlı ürün için {review_count} yorum analiz edildi.\n"
+                f"Duygu dağılımı: %{sentiment.get('positive', 65)} pozitif, %{sentiment.get('neutral', 25)} nötr, %{sentiment.get('negative', 10)} negatif.\n"
+                f"Olumlu yönler: {', '.join(positives[:3]) if positives else 'belirsiz'}.\n"
+                f"Olumsuz yönler: {', '.join(negatives[:2]) if negatives else 'belirsiz'}.\n\n"
+                "Bu bilgilere göre ürün için doğal ve akıcı Türkçe ile 2-3 cümlelik bir özet yaz. "
+                "Sadece özeti yaz, başlık veya açıklama ekleme."
+            )
+            resp = _genai_client.models.generate_content(model=_GEMINI_MODEL, contents=prompt)
+            return resp.text.strip()
+        except Exception as e:
+            print(f"[Gemini summary error] {e}")
+            # Fallback: template tabanlı
+            pos_pct = sentiment.get('positive', 65)
+            count_str = f"{review_count} yorum" if review_count > 0 else "mevcut yorumlar"
+            if pos_pct >= 75:
+                verdict = f"kullanıcıların %{pos_pct}'i üründen memnun"
+            elif pos_pct >= 55:
+                verdict = f"kullanıcı görüşleri genel olarak olumlu (%{pos_pct} pozitif)"
+            elif pos_pct >= 40:
+                verdict = f"yorumlar karışık (%{pos_pct} olumlu, %{sentiment.get('negative', 0)} olumsuz)"
+            else:
+                verdict = f"kullanıcıların büyük çoğunluğu üründen memnun değil (%{sentiment.get('negative', 0)} negatif)"
+            summary = f"{full_name} için {count_str} analiz edildi; {verdict}."
+            if positives:
+                summary += f" Öne çıkan olumlu yönler: {', '.join(positives[:2])}."
+            if negatives:
+                summary += f" En çok şikayet edilen konular: {', '.join(negatives[:1])}."
+            return summary
 
     def analyze(self):
         if not self.fetch_page():
@@ -473,10 +617,17 @@ class RealAnalyzer:
         }
         product_info = extractors.get(site, self.extract_generic)()
 
-        # Fallback name from title
+        # Fallback name from page title
         if not product_info.get('name') or product_info['name'] in ('Ürün', ''):
             generic = self.extract_generic()
             product_info['name'] = generic.get('name', 'Ürün')
+
+        # Reliable image fallback: og:image works on all sites
+        if not product_info.get('image'):
+            product_info['image'] = self._get_og_image()
+
+        # Meta description gives Gemini more product context even without reviews
+        description = self._get_meta_description()
 
         reviews = product_info.pop('reviews', [])
         review_count = product_info.get('review_count', len(reviews))
@@ -484,21 +635,32 @@ class RealAnalyzer:
             review_count = len(reviews)
             product_info['review_count'] = review_count
 
-        sentiment = self.analyze_sentiment(reviews)
-        positives = self.extract_aspects(reviews, self.POSITIVE_ASPECTS)
-        negatives = self.extract_aspects(reviews, self.NEGATIVE_ASPECTS)
+        # Single comprehensive Gemini call — product-specific even without reviews
+        try:
+            ai = self.gemini_analyze(product_info, reviews, description)
+            sentiment = ai['sentiment']
+            positives = ai['positives']
+            negatives = ai['negatives']
+            summary = ai['summary']
+            recommendation = ai['recommendation']
+            rec_icon = ai['recommendation_icon']
+            audiences = ai['audiences']
+        except Exception as e:
+            print(f"[Gemini full analysis error] {e}")
+            sentiment = self.analyze_sentiment(reviews)
+            positives = self.extract_aspects(reviews, self.POSITIVE_ASPECTS)
+            negatives = self.extract_aspects(reviews, self.NEGATIVE_ASPECTS)
+            if not positives:
+                positives = (['Genel kullanıcı memnuniyeti yüksek', 'Ürün beklentileri karşılıyor']
+                             if sentiment['positive'] > 55 else ['Bazı kullanıcılar üründen memnun'])
+            if not negatives:
+                negatives = (['Belirgin şikayet kategorisi tespit edilmedi']
+                             if sentiment['negative'] < 25 else ['Bazı kullanıcılar sorun yaşamış'])
+            recommendation, rec_icon = self.get_recommendation(sentiment, product_info.get('rating', 0))
+            summary = self.generate_summary(product_info, sentiment, positives, negatives)
+            audiences = self.get_audiences(product_info, reviews)
 
-        if not positives:
-            positives = (['Genel kullanıcı memnuniyeti yüksek', 'Ürün beklentileri karşılıyor']
-                         if sentiment['positive'] > 55 else ['Bazı kullanıcılar üründen memnun'])
-        if not negatives:
-            negatives = (['Belirgin şikayet kategorisi tespit edilmedi']
-                         if sentiment['negative'] < 25 else ['Bazı kullanıcılar sorun yaşamış'])
-
-        recommendation, rec_icon = self.get_recommendation(sentiment, product_info.get('rating', 0))
         trust_score = self.get_trust_score(reviews, review_count)
-        summary = self.generate_summary(product_info, sentiment, positives, negatives)
-        audiences = self.get_audiences(product_info, reviews)
         trend = self.get_trend()
 
         return {
@@ -526,9 +688,12 @@ class RealAnalyzer:
 def index():
     return render_template('index.html')
 
-@app.route('/analyze', methods=['POST'])
-def analyze():
-    data = request.get_json()
+@app.route('/analyze', methods=['GET', 'POST'])
+def analyze_route():
+    if request.method == 'GET':
+        return render_template('index.html')
+
+    data = request.get_json(silent=True) or {}
     url = (data.get('url') or '').strip()
     if not url:
         return jsonify({'error': 'URL gerekli'}), 400
@@ -554,6 +719,10 @@ def results():
 @app.route('/loading')
 def loading():
     return render_template('loading.html')
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
 
 @app.route('/api/results')
 def api_results():
