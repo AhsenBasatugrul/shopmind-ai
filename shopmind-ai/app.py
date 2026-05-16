@@ -22,7 +22,7 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Encoding': 'gzip, deflate',
     'Connection': 'keep-alive',
     'Referer': 'https://www.google.com/',
     'Upgrade-Insecure-Requests': '1',
@@ -113,12 +113,16 @@ class RealAnalyzer:
         self.soup = None
 
     def fetch_page(self):
-        session = requests.Session()
-        session.headers.update(HEADERS)
+        http_session = requests.Session()
+        http_session.headers.update(HEADERS)
         try:
-            resp = session.get(self.url, timeout=15, allow_redirects=True)
+            resp = http_session.get(self.url, timeout=15, allow_redirects=True)
             resp.raise_for_status()
-            resp.encoding = resp.apparent_encoding
+            # Don't override utf-8 from Content-Type; apparent_encoding fails on gzip
+            if resp.apparent_encoding and 'utf-8' not in (resp.encoding or '').lower():
+                resp.encoding = resp.apparent_encoding
+            elif not resp.encoding:
+                resp.encoding = 'utf-8'
             self.soup = BeautifulSoup(resp.text, 'html.parser')
             return True
         except Exception as e:
@@ -181,61 +185,55 @@ class RealAnalyzer:
     # ---- Site-specific extractors ----
 
     def extract_trendyol(self):
+        # Primary: __envoy__SHARED_PROPS (Trendyol's current SSR data structure)
+        shared = self._extract_trendyol_embedded()
+        prod = shared.get('product', {})
+
+        # Fallback: JSON-LD (occasionally present)
         ld = self.extract_json_ld()
-        embedded = self._extract_trendyol_embedded()
 
-        # Try embedded JS state first, then JSON-LD, then DOM
-        product_data = embedded.get('product', embedded.get('productDetailPage', {}))
+        name = (prod.get('name') or ld.get('name') or
+                self._text('h1[class*="pr-new-br"]') or self._text('h1'))
 
-        name = (product_data.get('name') or ld.get('name') or
-                self._text('.pr-new-br span') or self._text('h1.pr-new-br') or self._text('h1'))
+        brand_raw = prod.get('brand', {})
+        brand = (brand_raw.get('name', '') if isinstance(brand_raw, dict) else str(brand_raw or '')) or \
+                (ld.get('brand', {}).get('name', '') if isinstance(ld.get('brand'), dict) else '') or \
+                self._text('[class*="brand"]')
 
-        brand_data = product_data.get('brand', {})
-        brand = ((brand_data.get('name') if isinstance(brand_data, dict) else brand_data) or
-                 (ld.get('brand', {}).get('name', '') if isinstance(ld.get('brand'), dict) else '') or
-                 self._text('.pr-new-br a') or self._text('[class*="brand"]'))
+        # Rating & review count from ratingScore
+        rating_score = prod.get('ratingScore', {}) if isinstance(prod.get('ratingScore'), dict) else {}
+        rating = float(rating_score.get('averageRating', 0) or 0)
+        review_count = int(rating_score.get('totalCount', 0) or rating_score.get('commentCount', 0) or 0)
 
+        # Price: not in static HTML on Trendyol — try og:price meta, then leave empty for Gemini
         price = ''
-        embedded_price = product_data.get('price', {})
-        if isinstance(embedded_price, dict):
-            price = f"₺{embedded_price.get('sellingPrice', embedded_price.get('discountedPrice', ''))}"
-        if not price or price == '₺':
+        og_price_el = self.soup.find('meta', attrs={'property': 'product:price:amount'})
+        if og_price_el and og_price_el.get('content'):
+            price = f"₺{og_price_el['content']}"
+        if not price:
             ld_offers = ld.get('offers', {})
             if isinstance(ld_offers, list):
                 ld_offers = ld_offers[0] if ld_offers else {}
             if ld_offers.get('price'):
                 price = f"₺{ld_offers['price']}"
-        if not price:
-            price = self._text('.prc-dsc') or self._text('[class*="price-box"]') or self._text('[class*="prc"]')
 
-        rating_val = product_data.get('ratingScore', {})
-        if isinstance(rating_val, dict):
-            rating = float(rating_val.get('averageRating', 0) or 0)
-        else:
-            rating = self._parse_rating(
-                str(ld.get('aggregateRating', {}).get('ratingValue', '')) or
-                self._text('.pro-rat-avg') or self._text('[class*="rating"]'))
+        # Image: og:image is reliably in Trendyol's SSR HTML
+        image = ''
+        og_img = self.soup.find('meta', attrs={'property': 'og:image'})
+        if og_img and og_img.get('content'):
+            image = og_img['content']
+        if not image:
+            preload = self.soup.find('link', rel='preload', attrs={'as': 'image'})
+            if preload and preload.get('href'):
+                image = preload['href']
 
-        review_count = int(product_data.get('ratingScore', {}).get('totalCount', 0) or 0)
-        if not review_count:
-            review_count_raw = (str(ld.get('aggregateRating', {}).get('reviewCount', '')) or
-                                self._text('[class*="review-count"]') or self._text('[class*="comment-count"]'))
-            review_count = self._parse_count(review_count_raw)
-
-        img_el = (self.soup.select_one('.base-product-image img') or
-                  self.soup.select_one('[class*="product-image"] img') or
-                  self.soup.select_one('img[class*="product"]'))
-        image = self._abs_image(img_el['src'] if img_el and img_el.get('src') else
-                                (img_el['data-src'] if img_el and img_el.get('data-src') else ''))
-        if not image and ld.get('image'):
-            raw_img = ld['image']
-            image = raw_img[0] if isinstance(raw_img, list) else raw_img
+        category = ''
+        cat = prod.get('category', {})
+        if isinstance(cat, dict):
+            category = cat.get('name', '')
 
         reviews = [el.get_text(strip=True) for el in self.soup.select('.comment-text, [class*="rnr-com-tx"]')
                    if len(el.get_text(strip=True)) > 15]
-
-        category = (product_data.get('category', {}).get('name', '') if isinstance(product_data.get('category'), dict) else '') or \
-                   ld.get('category') or self._text('[class*="breadcrumb"] li:last-child') or ''
 
         return dict(name=name, brand=brand, price=price, rating=rating,
                     image=image, category=category, review_count=review_count, reviews=reviews)
@@ -244,13 +242,16 @@ class RealAnalyzer:
         ld = self.extract_json_ld()
 
         name = (ld.get('name') or
+                self._text('[data-test-id="title"]') or
                 self._text('[class*="product-name"] h1') or
                 self._text('h1[itemprop="name"]') or
                 self._text('h1'))
 
         brand = (ld.get('brand', {}).get('name', '') if isinstance(ld.get('brand'), dict) else '') or \
+                self._text('[data-test-id="brand"]') or \
                 self._text('[class*="merchant"] a') or self._text('[class*="brand"]')
 
+        # Price: JSON-LD first, then meta og:price, then DOM
         ld_offers = ld.get('offers', {})
         if isinstance(ld_offers, list):
             ld_offers = ld_offers[0] if ld_offers else {}
@@ -258,24 +259,40 @@ class RealAnalyzer:
         if ld_offers.get('price'):
             price = f"₺{ld_offers['price']}"
         if not price:
-            price = self._text('[class*="product-price"]') or self._text('[itemprop="price"]')
+            og_price = self.soup.find('meta', attrs={'property': 'product:price:amount'})
+            if og_price and og_price.get('content'):
+                price = f"₺{og_price['content']}"
+        if not price:
+            price = (self._text('[data-test-id="price-current-price"]') or
+                     self._text('[class*="product-price"]') or
+                     self._text('[itemprop="price"]'))
 
-        rating = self._parse_rating(str(ld.get('aggregateRating', {}).get('ratingValue', '')) or
-                                    self._text('[class*="rating-score"]') or self._text('[class*="stars"]'))
+        rating_val = str(ld.get('aggregateRating', {}).get('ratingValue', ''))
+        rating = self._parse_rating(rating_val or
+                                    self._text('[data-test-id="rating"]') or
+                                    self._text('[class*="rating-score"]'))
 
-        review_count_raw = str(ld.get('aggregateRating', {}).get('reviewCount', '')) or \
-                           self._text('[class*="review-count"]') or self._text('[class*="comment-count"]')
-        review_count = self._parse_count(review_count_raw)
+        review_count_raw = str(ld.get('aggregateRating', {}).get('reviewCount', ''))
+        review_count = self._parse_count(review_count_raw) if review_count_raw else \
+                       self._parse_count(self._text('[data-test-id="review-count"]') or
+                                         self._text('[class*="review-count"]'))
 
-        img_el = (self.soup.select_one('[class*="product-image"] img') or
-                  self.soup.select_one('img[itemprop="image"]'))
-        image = self._abs_image(img_el.get('src') or img_el.get('data-src') if img_el else '')
+        # Image: og:image most reliable for Hepsiburada SSR
+        image = ''
+        og_img = self.soup.find('meta', attrs={'property': 'og:image'})
+        if og_img and og_img.get('content'):
+            image = og_img['content']
+        if not image:
+            img_el = (self.soup.select_one('[class*="product-image"] img') or
+                      self.soup.select_one('img[itemprop="image"]'))
+            if img_el:
+                image = self._abs_image(img_el.get('src') or img_el.get('data-src') or '')
         if not image and ld.get('image'):
             raw_img = ld['image']
             image = raw_img[0] if isinstance(raw_img, list) else raw_img
 
         reviews = [el.get_text(strip=True) for el in
-                   self.soup.select('[class*="comment-content"], [class*="review-text"], [class*="comment-body"]')
+                   self.soup.select('[data-test-id="review-text"], [class*="comment-content"], [class*="review-text"]')
                    if len(el.get_text(strip=True)) > 15]
 
         category = ld.get('category') or self._text('[class*="breadcrumb"] li:last-child') or ''
@@ -415,41 +432,46 @@ class RealAnalyzer:
         return ' '.join(w.capitalize() for w in name.split() if w)
 
     def _extract_trendyol_embedded(self):
-        """Trendyol sayfasındaki gömülü JS state'inden ürün verisini çeker."""
+        """Trendyol sayfasındaki window['__envoy__SHARED_PROPS'] verisini çeker."""
         if not self.soup:
             return {}
-        for script in self.soup.find_all('script'):
-            text = script.string or ''
-            if '__PRODUCT_DETAIL_APP_INITIAL_STATE__' not in text:
-                continue
-            m = re.search(r'__PRODUCT_DETAIL_APP_INITIAL_STATE__\s*=\s*(\{.+?\})\s*;?\s*(?:window|$)',
-                          text, re.DOTALL)
-            if not m:
-                m = re.search(r'__PRODUCT_DETAIL_APP_INITIAL_STATE__["\s:=]+(\{.+)', text, re.DOTALL)
-            if m:
-                try:
-                    raw = m.group(1)
-                    # Truncate at first unmatched brace to get valid JSON
-                    depth, end = 0, 0
-                    for i, ch in enumerate(raw):
-                        if ch == '{':
-                            depth += 1
-                        elif ch == '}':
-                            depth -= 1
-                            if depth == 0:
-                                end = i + 1
-                                break
-                    return json.loads(raw[:end]) if end else {}
-                except Exception:
-                    pass
-        return {}
+        raw_html = str(self.soup)
+        return self._parse_window_prop(raw_html, '__envoy__SHARED_PROPS')
+
+    def _parse_window_prop(self, html_text, key):
+        """window["key"] = {...} bloğunu JSON olarak çıkarır."""
+        marker = f'window["{key}"]'
+        idx = html_text.find(marker)
+        if idx == -1:
+            return {}
+        start = html_text.find('{', idx)
+        if start == -1:
+            return {}
+        raw = html_text[start:]
+        depth, end = 0, 0
+        for i, ch in enumerate(raw):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        try:
+            return json.loads(raw[:end]) if end else {}
+        except Exception:
+            return {}
 
     def _get_og_image(self):
-        for attr, name in [('property', 'og:image'), ('property', 'og:image:secure_url'),
-                           ('name', 'twitter:image')]:
-            el = self.soup.select_one(f'meta[{attr}="{name}"]')
+        if not self.soup:
+            return ''
+        for attrs in [{'property': 'og:image'}, {'property': 'og:image:secure_url'}, {'name': 'twitter:image'}]:
+            el = self.soup.find('meta', attrs=attrs)
             if el and el.get('content'):
                 return el['content']
+        link = self.soup.find('link', rel='preload', attrs={'as': 'image'})
+        if link and link.get('href'):
+            return link['href']
         return ''
 
     def _get_meta_description(self):
@@ -917,4 +939,4 @@ def logout():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)
