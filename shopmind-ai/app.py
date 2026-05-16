@@ -974,7 +974,8 @@ def api_results():
         return jsonify({'error': 'Analiz bulunamadı'}), 404
     return jsonify(analysis)
 
-# ---- Auth ----
+# ----- Auth -----
+ 
 
 @app.route('/register', methods=['POST'])
 def register():
