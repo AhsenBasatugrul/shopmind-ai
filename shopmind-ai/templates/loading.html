@@ -82,19 +82,25 @@ fetch('/analyze', {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url: productUrl })
 })
-.then(response => response.json())
-.then(data => {
+.then(response => response.json().then(data => ({ status: response.status, data })))
+.then(({ status, data }) => {
     clearInterval(progressInterval);
-    progressBar.style.width = '100%';
-    statusText.textContent = "Analiz tamamlandı! Yönlendiriliyor...";
-    setTimeout(() => {
-        window.location.href = data.redirect || '/results';
-    }, 500);
+    if (data.success) {
+        progressBar.style.width = '100%';
+        statusText.textContent = "Analiz tamamlandı! Yönlendiriliyor...";
+        setTimeout(() => { window.location.href = data.redirect || '/results'; }, 500);
+    } else {
+        progressBar.style.width = '100%';
+        progressBar.classList.remove('bg-gradient-to-r', 'from-transparent', 'via-primary-container', 'to-primary-container/80');
+        progressBar.classList.add('bg-error');
+        statusText.innerHTML = '<span style="color:#ffb4ab">⚠ ' + (data.error || 'Ürün sayfasına erişilemedi.') + '</span>';
+        document.querySelector('.neon-spinner').style.borderTopColor = '#ffb4ab';
+        setTimeout(() => { window.history.back(); }, 4000);
+    }
 })
 .catch(error => {
     clearInterval(progressInterval);
-    statusText.textContent = "Bir hata oluştu. Yeniden deneyin.";
-    statusText.classList.add('text-error');
+    statusText.innerHTML = '<span style="color:#ffb4ab">⚠ Sunucuya bağlanılamadı. Yeniden deneyin.</span>';
     console.error('Error:', error);
 });
 </script>

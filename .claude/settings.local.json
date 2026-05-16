@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"from app import app, RealAnalyzer; print\\('Import OK'\\); a = RealAnalyzer\\('https://example.com'\\); print\\('RealAnalyzer OK'\\)\")",
+      "Bash(.conda\\\\python.exe -c \"from shopmind-ai.app import app\")",
+      "Bash(.conda\\\\python.exe shopmind-ai/app.py --check)",
+      "PowerShell(cd \"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\shopmind-ai\"; $python = \".\\\\.conda\\\\python.exe\"; & $python -c \"import sys; sys.path.insert\\(0,'shopmind-ai'\\); from app import app, RealAnalyzer; print\\('Import OK'\\)\" 2>&1)",
+      "PowerShell(cd \"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\shopmind-ai\"; $python = \".\\\\.conda\\\\python.exe\"; & $python -c \"import flask; import requests; import bs4; print\\('flask:', flask.__version__\\); print\\('requests:', requests.__version__\\); print\\('bs4:', bs4.__version__\\)\" 2>&1)"
+    ]
+  }
+}

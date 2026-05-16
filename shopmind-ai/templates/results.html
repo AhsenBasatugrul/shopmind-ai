@@ -11,20 +11,41 @@
         <!-- Product Card -->
         <div class="glass-panel rounded-lg p-6 flex flex-col md:flex-row gap-6 items-center animate-fade-in">
             <div class="w-40 h-40 shrink-0 bg-surface-container rounded-DEFAULT overflow-hidden border border-white/5 relative">
-                <img alt="{{ data.product.name }}" class="w-full h-full object-cover" src="{{ data.product.image }}" onerror="this.src='https://via.placeholder.com/400x400/051424/39ff14?text={{ data.product.name[:1] }}'"/>
+                {% if data.product.image %}
+                <img alt="{{ data.product.name }}" class="w-full h-full object-cover"
+                     src="{{ data.product.image }}"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"/>
+                {% endif %}
+                <div class="{% if data.product.image %}hidden{% endif %} w-full h-full items-center justify-center bg-surface-container-high flex">
+                    <span class="material-symbols-outlined text-primary-container text-[56px]" style="font-variation-settings:'FILL' 1;">inventory_2</span>
+                </div>
+                {% if data.product.rating and data.product.rating > 0 %}
                 <div class="absolute top-2 right-2 bg-surface/80 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 border border-white/10">
                     <span class="material-symbols-outlined text-[14px] text-primary-container" style="font-variation-settings: 'FILL' 1;">star</span>
-                    <span class="font-label-sm text-label-sm text-primary">{{ data.product.rating }}</span>
+                    <span class="font-label-sm text-label-sm text-primary">{{ "%.1f"|format(data.product.rating) }}</span>
                 </div>
+                {% endif %}
             </div>
             <div class="flex-grow flex flex-col justify-center text-center md:text-left">
+                {% if data.product.brand %}
                 <span class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-widest mb-1">{{ data.product.brand }}</span>
-                <h1 class="text-headline-md font-headline-md text-primary mb-2">{{ data.product.name }}</h1>
+                {% endif %}
+                <h1 class="text-headline-md font-headline-md text-primary mb-2">{{ data.product.name or 'Ürün' }}</h1>
+                {% if data.product.price %}
                 <div class="text-display-lg font-display-lg text-primary-container mb-4">{{ data.product.price }}</div>
+                {% endif %}
                 <div class="flex flex-wrap gap-2 justify-center md:justify-start">
                     <span class="inline-flex items-center gap-1 bg-primary-container/10 text-primary-container px-3 py-1 rounded-full border border-primary-container/30 text-label-sm font-label-sm">
-                        <span class="material-symbols-outlined text-[16px]">verified</span> Verified Product
+                        <span class="material-symbols-outlined text-[16px]">analytics</span> Analiz Edildi
                     </span>
+                    {% if data.product.category %}
+                    <span class="inline-flex items-center gap-1 bg-surface-variant/40 text-on-surface-variant px-3 py-1 rounded-full border border-white/10 text-label-sm font-label-sm">
+                        <span class="material-symbols-outlined text-[16px]">category</span> {{ data.product.category }}
+                    </span>
+                    {% endif %}
+                    <a href="{{ data.url }}" target="_blank" class="inline-flex items-center gap-1 bg-surface-variant/40 text-on-surface-variant px-3 py-1 rounded-full border border-white/10 text-label-sm font-label-sm hover:text-primary hover:border-primary/30 transition-colors">
+                        <span class="material-symbols-outlined text-[16px]">open_in_new</span> Ürün Sayfası
+                    </a>
                 </div>
             </div>
         </div>

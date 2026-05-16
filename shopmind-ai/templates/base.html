@@ -181,10 +181,6 @@
             mask-composite: exclude;
             pointer-events: none;
         }
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(200%); }
-        }
         .neon-border-top {
             border-top: 2px solid #39ff14;
         }
@@ -202,6 +198,45 @@
         .animate-fade-in-delay-2 { animation-delay: 0.2s; opacity: 0; }
         .animate-fade-in-delay-3 { animation-delay: 0.3s; opacity: 0; }
         .animate-fade-in-delay-4 { animation-delay: 0.4s; opacity: 0; }
+
+        /* Auth Modal */
+        .auth-modal-backdrop {
+            background: rgba(1, 15, 31, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .auth-input {
+            background: rgba(18, 33, 49, 0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .auth-input:focus {
+            outline: none;
+            border-color: #39ff14;
+            box-shadow: 0 0 0 2px rgba(57,255,20,0.15);
+        }
+        .auth-btn-primary {
+            background: #39ff14;
+            color: #022100;
+            font-weight: 700;
+            transition: opacity 0.2s, transform 0.15s;
+        }
+        .auth-btn-primary:hover {
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+        .auth-btn-ghost {
+            background: transparent;
+            border: 1px solid rgba(57,255,20,0.4);
+            color: #79ff5b;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .auth-btn-ghost:hover {
+            background: rgba(57,255,20,0.08);
+            border-color: #39ff14;
+        }
+        #auth-modal { display: none; }
+        #auth-modal.open { display: flex; }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
@@ -209,7 +244,6 @@
     <!-- Global Background & Grid -->
     <div class="fixed inset-0 z-[-2] bg-surface-container-lowest"></div>
     <div class="fixed inset-0 z-[-1] grid-pattern pointer-events-none"></div>
-    <!-- Subtle Neon Light Leaks -->
     <div class="fixed top-[10%] left-[20%] w-[500px] h-[500px] rounded-full bg-primary-container/5 blur-[120px] z-[-1] pointer-events-none"></div>
     <div class="fixed bottom-[10%] right-[10%] w-[400px] h-[400px] rounded-full bg-primary-container/10 blur-[150px] z-[-1] pointer-events-none"></div>
 
@@ -224,10 +258,33 @@
                 <a class="{% if request.endpoint == 'results' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/">Analyze</a>
                 <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5 transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="#">About</a>
             </nav>
-            <a class="text-primary dark:text-primary-fixed hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5 transition-all duration-300 px-4 py-2 rounded text-label-md font-label-md border border-white/10 flex items-center gap-2" href="https://github.com" target="_blank">
-                GitHub
-                <span class="material-symbols-outlined text-[18px]">open_in_new</span>
-            </a>
+
+            <!-- Auth Area -->
+            <div class="flex items-center gap-2">
+                {% if session.user %}
+                <!-- Logged in: user chip + logout -->
+                <div class="flex items-center gap-3">
+                    <div class="hidden sm:flex items-center gap-2 bg-surface-variant/40 border border-white/10 rounded-full px-3 py-1.5">
+                        <span class="material-symbols-outlined text-[18px] text-primary-container" style="font-variation-settings:'FILL' 1;">account_circle</span>
+                        <span class="text-label-md font-label-md text-primary">{{ session.user.name }}</span>
+                    </div>
+                    <a href="/logout" class="text-on-surface-variant hover:text-error text-label-md font-label-md px-3 py-2 rounded border border-white/10 hover:border-error/40 hover:bg-error/5 transition-all flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">logout</span>
+                        <span class="hidden sm:inline">Çıkış</span>
+                    </a>
+                </div>
+                {% else %}
+                <!-- Not logged in: Login + Register -->
+                <button onclick="openAuth('login')" class="auth-btn-ghost text-label-md font-label-md px-4 py-2 rounded flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]">login</span>
+                    Giriş Yap
+                </button>
+                <button onclick="openAuth('register')" class="auth-btn-primary text-label-md px-4 py-2 rounded flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]">person_add</span>
+                    Kaydol
+                </button>
+                {% endif %}
+            </div>
         </div>
     </header>
 
@@ -243,5 +300,211 @@
         </div>
         <div class="text-label-sm font-label-sm text-on-surface-variant">© 2024 ShopMind AI. Powered by Neural Core.</div>
     </footer>
+
+    <!-- ======= AUTH MODAL ======= -->
+    <div id="auth-modal" class="auth-modal-backdrop fixed inset-0 z-[100] items-center justify-center p-4" onclick="handleBackdropClick(event)">
+        <div class="glass-panel rounded-xl w-full max-w-md p-8 relative" onclick="event.stopPropagation()">
+            <!-- Close -->
+            <button onclick="closeAuth()" class="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+
+            <!-- Tab switcher -->
+            <div class="flex gap-1 mb-8 bg-surface-container rounded-lg p-1">
+                <button id="tab-login" onclick="switchTab('login')"
+                    class="flex-1 py-2 rounded-md text-label-md font-label-md transition-all">
+                    Giriş Yap
+                </button>
+                <button id="tab-register" onclick="switchTab('register')"
+                    class="flex-1 py-2 rounded-md text-label-md font-label-md transition-all">
+                    Kaydol
+                </button>
+            </div>
+
+            <!-- Error message -->
+            <div id="auth-error" class="hidden mb-4 bg-error/10 border border-error/30 rounded-lg px-4 py-3 text-error text-label-md flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">error</span>
+                <span id="auth-error-text"></span>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" onsubmit="submitLogin(event)" class="flex flex-col gap-4">
+                <div>
+                    <label class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider mb-2 block">E-posta</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">mail</span>
+                        <input id="login-email" type="email" placeholder="ornek@email.com" required
+                            class="auth-input w-full rounded-lg pl-10 pr-4 py-3 text-body-md text-on-surface placeholder-on-surface-variant/50"/>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider mb-2 block">Şifre</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">lock</span>
+                        <input id="login-password" type="password" placeholder="Şifreniz" required
+                            class="auth-input w-full rounded-lg pl-10 pr-4 py-3 text-body-md text-on-surface placeholder-on-surface-variant/50"/>
+                    </div>
+                </div>
+                <button type="submit" id="login-submit"
+                    class="auth-btn-primary w-full py-3 rounded-lg text-label-md flex items-center justify-center gap-2 mt-2">
+                    <span class="material-symbols-outlined text-[18px]">login</span>
+                    Giriş Yap
+                </button>
+                <p class="text-center text-label-sm text-on-surface-variant">
+                    Hesabın yok mu?
+                    <button type="button" onclick="switchTab('register')" class="text-primary-container hover:underline ml-1">Kaydol</button>
+                </p>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" onsubmit="submitRegister(event)" class="hidden flex flex-col gap-4">
+                <div>
+                    <label class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider mb-2 block">Ad Soyad</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">person</span>
+                        <input id="reg-name" type="text" placeholder="Adın Soyadın" required
+                            class="auth-input w-full rounded-lg pl-10 pr-4 py-3 text-body-md text-on-surface placeholder-on-surface-variant/50"/>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider mb-2 block">E-posta</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">mail</span>
+                        <input id="reg-email" type="email" placeholder="ornek@email.com" required
+                            class="auth-input w-full rounded-lg pl-10 pr-4 py-3 text-body-md text-on-surface placeholder-on-surface-variant/50"/>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider mb-2 block">Şifre</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">lock</span>
+                        <input id="reg-password" type="password" placeholder="En az 6 karakter" required minlength="6"
+                            class="auth-input w-full rounded-lg pl-10 pr-4 py-3 text-body-md text-on-surface placeholder-on-surface-variant/50"/>
+                    </div>
+                </div>
+                <button type="submit" id="reg-submit"
+                    class="auth-btn-primary w-full py-3 rounded-lg text-label-md flex items-center justify-center gap-2 mt-2">
+                    <span class="material-symbols-outlined text-[18px]">person_add</span>
+                    Hesap Oluştur
+                </button>
+                <p class="text-center text-label-sm text-on-surface-variant">
+                    Zaten hesabın var mı?
+                    <button type="button" onclick="switchTab('login')" class="text-primary-container hover:underline ml-1">Giriş Yap</button>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    // ---- Modal ----
+    function openAuth(tab) {
+        document.getElementById('auth-modal').classList.add('open');
+        switchTab(tab || 'login');
+        hideError();
+    }
+    function closeAuth() {
+        document.getElementById('auth-modal').classList.remove('open');
+        hideError();
+    }
+    function handleBackdropClick(e) {
+        if (e.target === document.getElementById('auth-modal')) closeAuth();
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAuth(); });
+
+    function switchTab(tab) {
+        const loginForm = document.getElementById('login-form');
+        const regForm = document.getElementById('register-form');
+        const tabLogin = document.getElementById('tab-login');
+        const tabReg = document.getElementById('tab-register');
+        hideError();
+
+        if (tab === 'login') {
+            loginForm.classList.remove('hidden');
+            regForm.classList.add('hidden');
+            tabLogin.classList.add('bg-surface-variant', 'text-primary');
+            tabLogin.classList.remove('text-on-surface-variant');
+            tabReg.classList.remove('bg-surface-variant', 'text-primary');
+            tabReg.classList.add('text-on-surface-variant');
+        } else {
+            regForm.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            tabReg.classList.add('bg-surface-variant', 'text-primary');
+            tabReg.classList.remove('text-on-surface-variant');
+            tabLogin.classList.remove('bg-surface-variant', 'text-primary');
+            tabLogin.classList.add('text-on-surface-variant');
+        }
+    }
+
+    function showError(msg) {
+        const el = document.getElementById('auth-error');
+        document.getElementById('auth-error-text').textContent = msg;
+        el.classList.remove('hidden');
+    }
+    function hideError() {
+        document.getElementById('auth-error').classList.add('hidden');
+    }
+
+    function setLoading(btnId, loading) {
+        const btn = document.getElementById(btnId);
+        btn.disabled = loading;
+        btn.style.opacity = loading ? '0.6' : '1';
+    }
+
+    async function submitLogin(e) {
+        e.preventDefault();
+        hideError();
+        setLoading('login-submit', true);
+        try {
+            const res = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: document.getElementById('login-email').value,
+                    password: document.getElementById('login-password').value,
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                showError(data.error || 'Giriş başarısız');
+            }
+        } catch {
+            showError('Sunucuya bağlanılamadı');
+        } finally {
+            setLoading('login-submit', false);
+        }
+    }
+
+    async function submitRegister(e) {
+        e.preventDefault();
+        hideError();
+        setLoading('reg-submit', true);
+        try {
+            const res = await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: document.getElementById('reg-name').value,
+                    email: document.getElementById('reg-email').value,
+                    password: document.getElementById('reg-password').value,
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                showError(data.error || 'Kayıt başarısız');
+            }
+        } catch {
+            showError('Sunucuya bağlanılamadı');
+        } finally {
+            setLoading('reg-submit', false);
+        }
+    }
+
+    // Init tab styling on load
+    document.addEventListener('DOMContentLoaded', () => switchTab('login'));
+    </script>
 </body>
 </html>
