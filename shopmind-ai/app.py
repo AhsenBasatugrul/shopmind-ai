@@ -6,6 +6,8 @@ import json
 import hashlib
 import os
 import random
+import secrets
+import tempfile
 from datetime import datetime
 from google import genai as google_genai
 from google.genai import types as genai_types
@@ -29,6 +31,29 @@ app = Flask(__name__)
 app.secret_key = "shopmind-ai-secret-key-2024"
 
 USERS_FILE = os.path.join(os.path.dirname(__file__), 'users.json')
+
+# Sunucu taraflı analiz deposu — session cookie 4KB limitini aşmamak için
+_ANALYSIS_DIR = os.path.join(tempfile.gettempdir(), 'shopmind_analyses')
+os.makedirs(_ANALYSIS_DIR, exist_ok=True)
+
+def save_analysis(result: dict) -> str:
+    aid = secrets.token_urlsafe(16)
+    path = os.path.join(_ANALYSIS_DIR, f"{aid}.json")
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(result, f, ensure_ascii=False)
+    return aid
+
+def load_analysis(aid: str) -> dict | None:
+    if not aid:
+        return None
+    path = os.path.join(_ANALYSIS_DIR, f"{aid}.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return None
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -949,12 +974,13 @@ def analyze_route():
     if result is None:
         return jsonify({'error': 'Ürün sayfasına erişilemedi. Lütfen geçerli bir ürün linki girin.'}), 422
 
-    session['last_analysis'] = result
+    aid = save_analysis(result)
+    session['analysis_id'] = aid   # sadece küçük ID cookie'ye girer
     return jsonify({'success': True, 'redirect': '/results'})
 
 @app.route('/results')
 def results():
-    analysis = session.get('last_analysis')
+    analysis = load_analysis(session.get('analysis_id'))
     if not analysis:
         return render_template('index.html')
     return render_template('results.html', data=analysis)
@@ -969,7 +995,7 @@ def about():
 
 @app.route('/api/results')
 def api_results():
-    analysis = session.get('last_analysis')
+    analysis = load_analysis(session.get('analysis_id'))
     if not analysis:
         return jsonify({'error': 'Analiz bulunamadı'}), 404
     return jsonify(analysis)
