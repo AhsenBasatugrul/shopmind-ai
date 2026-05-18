@@ -13,7 +13,7 @@
             <div class="w-40 h-40 shrink-0 bg-surface-container rounded-DEFAULT overflow-hidden border border-white/5 relative">
                 {% if data.product.image %}
                 <img alt="{{ data.product.name }}" class="w-full h-full object-cover"
-                     src="{{ data.product.image }}"
+                     src="/proxy-image?url={{ data.product.image | urlencode }}"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"/>
                 {% endif %}
                 <div class="{% if data.product.image %}hidden{% endif %} w-full h-full items-center justify-center bg-surface-container-high flex flex-col gap-2">

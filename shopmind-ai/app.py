@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, Response, abort
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -7,6 +7,7 @@ import hashlib
 import os
 import random
 from datetime import datetime
+from urllib.parse import urlparse, quote
 from google import genai as google_genai
 from google.genai import types as genai_types
 
@@ -303,6 +304,14 @@ class RealAnalyzer:
         if not image and ld.get('image'):
             raw_img = ld['image']
             image = raw_img[0] if isinstance(raw_img, list) else raw_img
+        if not image:
+            img_el = self.soup.select_one('img[class*="hb-HbImage-view__image"]')
+            if img_el:
+                image = self._abs_image(img_el.get('src') or img_el.get('data-src') or '')
+        if not image:
+            image = self._find_image_in_scripts(['productimages.hepsiburada.net'])
+        if not image and name:
+            image = self._find_image_by_alt(name)
 
         reviews = [el.get_text(strip=True) for el in
                    self.soup.select('[data-test-id="review-text"], [class*="comment-content"], [class*="review-text"]')
@@ -393,6 +402,10 @@ class RealAnalyzer:
             image = self._abs_image(img_el.get('src') or img_el.get('content') or '')
         else:
             image = ''
+        if not image:
+            image = self._find_image_in_scripts()
+        if not image and name:
+            image = self._find_image_by_alt(name)
 
         reviews = [el.get_text(strip=True) for el in
                    self.soup.select('[class*="review"], [class*="comment"], [class*="yorum"], [itemprop="reviewBody"]')
@@ -402,6 +415,72 @@ class RealAnalyzer:
                     image=image, category='', review_count=review_count, reviews=reviews)
 
     # ---- Helpers ----
+
+    def _find_image_in_scripts(self, cdn_hints=None):
+        """Scan all <script> tag content for embedded product image CDN URLs.
+
+        Works even when images are JS-rendered and img.src is empty at fetch time,
+        because the data blobs containing image URLs are always present in SSR HTML.
+        """
+        if not self.soup:
+            return ''
+        hints = cdn_hints or [
+            'productimages.', 'cdn.', 'images.', 'img.', 'static.',
+            'media.', 'assets.', '/product-images/', '/urun/',
+        ]
+        pattern = re.compile(
+            r'https?://[^\s\'"\\<>{}\[\]]+\.(?:jpg|jpeg|png|webp|avif|gif)(?:\?[^\s\'"\\<>]*)?',
+            re.IGNORECASE,
+        )
+        seen = set()
+        candidates = []
+        for script in self.soup.find_all('script'):
+            text = script.string or ''
+            if not text.strip():
+                continue
+            for m in pattern.finditer(text):
+                url = m.group(0).rstrip('.,;)"\']')
+                if url in seen:
+                    continue
+                seen.add(url)
+                if any(h in url.lower() for h in hints) and self._validate_image_url(url):
+                    candidates.append(url)
+
+        if not candidates:
+            return ''
+
+        # Prefer higher-resolution: pick the URL whose path contains the largest
+        # dimension number (e.g. "1200" beats "200" in ".../1200x900/...")
+        def _dim_score(u):
+            nums = [int(n) for n in re.findall(r'\b(\d{2,4})\b', urlparse(u).path)]
+            return max(nums) if nums else 0
+
+        candidates.sort(key=_dim_score, reverse=True)
+        return candidates[0]
+
+    def _find_image_by_alt(self, name):
+        """Find a product image whose alt text shares significant words with the product name."""
+        if not name or not self.soup:
+            return ''
+        name_words = {w.lower() for w in re.split(r'\W+', name) if len(w) >= 3}
+        if not name_words:
+            return ''
+        threshold = 1 if len(name_words) <= 2 else 2
+        best_score, best_src = 0, ''
+        for img in self.soup.find_all('img', alt=True):
+            alt = img.get('alt', '').strip()
+            if not alt:
+                continue
+            alt_words = {w.lower() for w in re.split(r'\W+', alt) if len(w) >= 3}
+            score = len(name_words & alt_words)
+            if score >= threshold and score > best_score:
+                src = (img.get('src') or img.get('data-src') or
+                       img.get('data-lazy-src') or img.get('data-original') or '')
+                src = self._abs_image(src)
+                if src and self._validate_image_url(src):
+                    best_score = score
+                    best_src = src
+        return best_src
 
     def _text(self, selector):
         el = self.soup.select_one(selector)
@@ -1026,6 +1105,39 @@ def login():
 def logout():
     session.pop('user', None)
     return redirect(url_for('index'))
+
+
+@app.route('/proxy-image')
+def proxy_image():
+    image_url = request.args.get('url', '').strip()
+    if not image_url or not image_url.startswith(('http://', 'https://')):
+        abort(400)
+
+    parsed = urlparse(image_url)
+    # Only allow image-serving hosts (no localhost, internal IPs, etc.)
+    hostname = parsed.hostname or ''
+    if hostname in ('localhost', '127.0.0.1') or hostname.startswith('192.168.') or hostname.startswith('10.'):
+        abort(403)
+
+    referer = f"{parsed.scheme}://{parsed.netloc}/"
+    img_headers = dict(HEADERS)
+    img_headers['Referer'] = referer
+    img_headers['Accept'] = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+
+    try:
+        resp = requests.get(image_url, headers=img_headers, timeout=10, stream=True)
+        resp.raise_for_status()
+        content_type = resp.headers.get('Content-Type', 'image/jpeg')
+        if not content_type.startswith('image/'):
+            abort(400)
+        return Response(
+            resp.content,
+            content_type=content_type,
+            headers={'Cache-Control': 'public, max-age=3600'},
+        )
+    except Exception as e:
+        print(f"[proxy-image error] {e}")
+        abort(502)
 
 
 if __name__ == '__main__':
