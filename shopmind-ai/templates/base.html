@@ -254,29 +254,10 @@
                 ShopMind AI
             </a>
             <nav class="hidden md:flex gap-gutter">
-                <a class="{% if request.endpoint == 'index' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/">Home</a>
-                <a class="{% if request.endpoint == 'analyze_route' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/analyze">Analyze</a>
-                <a class="{% if request.endpoint == 'about' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/about">About</a>
+                <a class="{% if request.endpoint == 'index' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/">Ana Sayfa</a>
+                <a class="{% if request.endpoint == 'analyze_route' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/analyze">Analiz</a>
+                <a class="{% if request.endpoint == 'about' %}text-primary dark:text-primary-fixed font-bold border-b-2 border-primary{% else %}text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed hover:bg-white/5{% endif %} transition-all duration-300 text-label-md font-label-md px-2 py-1 rounded" href="/about">Hakkında</a>
             </nav>
-
-            <!-- Language Selector -->
-            <div class="relative mr-1" id="lang-container">
-                <button onclick="toggleLangMenu(event)" class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-label-sm font-label-sm px-2 py-1.5 rounded border border-white/10 hover:border-primary/30 hover:bg-white/5">
-                    <span class="material-symbols-outlined text-[15px]">language</span>
-                    <span id="lang-label">TR</span>
-                    <span class="material-symbols-outlined text-[13px]">expand_more</span>
-                </button>
-                <div id="lang-dropdown" class="hidden absolute right-0 top-full mt-1 z-50 glass-panel rounded-lg p-1 min-w-[150px] border border-white/10 shadow-xl">
-                    <button onclick="setLang('tr','TR')" class="w-full text-left px-3 py-2 rounded text-label-sm font-label-sm text-on-surface hover:bg-white/5 flex items-center gap-2">🇹🇷 Türkçe</button>
-                    <button onclick="setLang('en','EN')" class="w-full text-left px-3 py-2 rounded text-label-sm font-label-sm text-on-surface hover:bg-white/5 flex items-center gap-2">🇬🇧 English</button>
-                    <button onclick="setLang('de','DE')" class="w-full text-left px-3 py-2 rounded text-label-sm font-label-sm text-on-surface hover:bg-white/5 flex items-center gap-2">🇩🇪 Deutsch</button>
-                    <button onclick="setLang('fr','FR')" class="w-full text-left px-3 py-2 rounded text-label-sm font-label-sm text-on-surface hover:bg-white/5 flex items-center gap-2">🇫🇷 Français</button>
-                    <button onclick="setLang('es','ES')" class="w-full text-left px-3 py-2 rounded text-label-sm font-label-sm text-on-surface hover:bg-white/5 flex items-center gap-2">🇪🇸 Español</button>
-                    <button onclick="setLang('ar','AR')" class="w-full text-left px-3 py-2 rounded text-label-sm font-label-sm text-on-surface hover:bg-white/5 flex items-center gap-2">🇸🇦 العربية</button>
-                    <button onclick="setLang('ru','RU')" class="w-full text-left px-3 py-2 rounded text-label-sm font-label-sm text-on-surface hover:bg-white/5 flex items-center gap-2">🇷🇺 Русский</button>
-                    <button onclick="setLang('zh','ZH')" class="w-full text-left px-3 py-2 rounded text-label-sm font-label-sm text-on-surface hover:bg-white/5 flex items-center gap-2">🇨🇳 中文</button>
-                </div>
-            </div>
 
             <!-- Auth Area -->
             <div class="flex items-center gap-2">
@@ -313,11 +294,11 @@
     <footer class="bg-surface-container-lowest dark:bg-surface-container-lowest w-full py-12 border-t border-white/5 flex flex-col items-center justify-center gap-4 px-container-padding mt-auto">
         <div class="text-label-md font-headline-md font-bold text-primary">ShopMind AI</div>
         <div class="flex gap-6">
-            <a class="text-on-surface-variant hover:text-primary-fixed text-label-sm font-label-sm transition-colors duration-200" href="#">Privacy Policy</a>
-            <a class="text-on-surface-variant hover:text-primary-fixed text-label-sm font-label-sm transition-colors duration-200" href="#">Terms of Service</a>
-            <a class="text-on-surface-variant hover:text-primary-fixed text-label-sm font-label-sm transition-colors duration-200" href="#">API Documentation</a>
+            <a class="text-on-surface-variant hover:text-primary-fixed text-label-sm font-label-sm transition-colors duration-200" href="#">Gizlilik Politikası</a>
+            <a class="text-on-surface-variant hover:text-primary-fixed text-label-sm font-label-sm transition-colors duration-200" href="#">Kullanım Koşulları</a>
+            <a class="text-on-surface-variant hover:text-primary-fixed text-label-sm font-label-sm transition-colors duration-200" href="#">API Belgeleri</a>
         </div>
-        <div class="text-label-sm font-label-sm text-on-surface-variant">© 2024 ShopMind AI. Powered by Neural Core.</div>
+        <div class="text-label-sm font-label-sm text-on-surface-variant">© 2026 ShopMind AI. Neural Core ile güçlendirilmiştir.</div>
     </footer>
 
     <!-- ======= AUTH MODAL ======= -->
@@ -525,30 +506,7 @@
     // Init tab styling on load
     document.addEventListener('DOMContentLoaded', () => switchTab('login'));
 
-    // ---- Language Selector ----
-    function toggleLangMenu(e) {
-        e.stopPropagation();
-        document.getElementById('lang-dropdown').classList.toggle('hidden');
-    }
-    function setLang(code, label) {
-        localStorage.setItem('shopmind_lang', code);
-        document.getElementById('lang-label').textContent = label;
-        document.getElementById('lang-dropdown').classList.add('hidden');
-    }
-    function getLang() {
-        return localStorage.getItem('shopmind_lang') || 'tr';
-    }
-    document.addEventListener('click', function(e) {
-        const container = document.getElementById('lang-container');
-        if (container && !container.contains(e.target)) {
-            document.getElementById('lang-dropdown').classList.add('hidden');
-        }
-    });
-    document.addEventListener('DOMContentLoaded', function() {
-        const saved = getLang();
-        const labels = { tr:'TR', en:'EN', de:'DE', fr:'FR', es:'ES', ar:'AR', ru:'RU', zh:'ZH' };
-        if (labels[saved]) document.getElementById('lang-label').textContent = labels[saved];
-    });
+    function getLang() { return 'tr'; }
     </script>
 </body>
 </html>
