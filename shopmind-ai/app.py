@@ -1576,6 +1576,20 @@ def logout():
     return redirect(url_for("index"))
 
 
+@app.route("/proxy-image")
+def proxy_image():
+    url = request.args.get("url", "").strip()
+    if not url or not url.startswith("http"):
+        return "", 400
+    try:
+        resp = requests.get(url, headers=_make_headers(), timeout=8, stream=True)
+        content_type = resp.headers.get("Content-Type", "image/jpeg")
+        from flask import Response
+        return Response(resp.content, content_type=content_type)
+    except Exception:
+        return "", 502
+
+
 # ----- Chat -----
 
 @app.route("/api/chat", methods=["POST"])
