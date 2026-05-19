@@ -1,102 +1,257 @@
-# ShopMind AI - Akıllı Ürün Analizi Platformu
+<div align="center">
 
-## 🚀 Hızlı Başlangıç
+# 🛍️ ShopMind AI
 
-### Gereksinimler
-- Python 3.8+
+### Yapay Zekâ Destekli Ürün Analiz Platformu
+
+*Bir link yapıştır — satın alma kararını yapay zekâya bırak.*
+
+<br/>
+
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-3.0-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com)
+[![Gemini AI](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+
+</div>
+
+---
+
+## 📖 Proje Hakkında
+
+**ShopMind AI**, kullanıcıların e-ticaret sitelerindeki ürün linklerini yapıştırarak saniyeler içinde yapay zekâ destekli derin bir analiz elde etmesini sağlayan bir karar destek platformudur.
+
+Trendyol, Hepsiburada ve Amazon gibi büyük platformlardan alınan ürün sayfaları otomatik olarak taranır; kullanıcı yorumları, puanlar ve ürün bilgileri **Google Gemini AI** aracılığıyla işlenerek anlamlı içgörülere dönüştürülür. Sistem; satın alma tavsiyesi, artı/eksi analizi, duygu skoru, sahte yorum risk tespiti ve hedef kitle önerileri sunar.
+
+> Amacımız tek: tüketicilerin daha bilinçli ve hızlı alışveriş kararları almasına yardımcı olmak.
+
+---
+
+## ✨ Özellikler
+
+| Özellik | Açıklama |
+|---|---|
+| 🤖 **AI Karar Motoru** | "Kesinlikle Alınır" → "Dikkatli Olunmalı" arasında 4 kademeli satın alma tavsiyesi |
+| 📊 **Duygu Analizi** | Yorumları pozitif / nötr / negatif olarak sınıflandırır, yüzdesel dağılım gösterir |
+| ✅ **Artılar & Eksiler** | Yüzlerce yorumdan en sık geçen olumlu ve olumsuz özellikleri özet olarak çıkarır |
+| 🛡️ **Sahte Yorum Tespiti** | Güven skoru ile sahte yorum riskini görsel olarak ortaya koyar |
+| 🎯 **Hedef Kitle Analizi** | Ürünün hangi kullanıcı profilleri için uygun olduğunu belirler |
+| 🌐 **Çoklu Platform** | Trendyol, Hepsiburada, Amazon ve N11 desteği |
+| 🔐 **Kullanıcı Sistemi** | Kayıt, giriş ve oturum yönetimi |
+| 🐳 **Docker Desteği** | Tek komutla production ortamında ayağa kaldırma |
+
+---
+
+## 🛠️ Teknoloji Yığını
+
+```
+Backend        →  Python 3.11 · Flask 3.0 · Requests · BeautifulSoup4
+AI / NLP       →  Google Gemini 2.5 Flash (analiz + arama tabanlı grounding)
+Scraping       →  Multi-layer fallback: REST API → Embedded JSON → JSON-LD → HTML → Playwright → AI
+Frontend       →  Jinja2 · Tailwind CSS · Material Symbols · Vanilla JS
+Altyapı        →  Docker · Docker Compose
+```
+
+---
+
+## 🚀 Kurulum
+
+### Ön Gereksinimler
+
+- Python **3.11+**
 - pip
+- Google Gemini API anahtarı → [Ücretsiz al](https://aistudio.google.com/app/apikey)
+- *(Opsiyonel)* Docker & Docker Compose
 
-### Kurulum
+---
+
+### 1. Yerel Kurulum
 
 ```bash
-# 1. Projeyi klasöre çıkarın
+# Proje klasörüne gir
 cd shopmind-ai
 
-# 2. Sanal ortam oluşturun (opsiyonel ama önerilir)
+# Sanal ortam oluştur ve aktifleştir
 python -m venv venv
 
-# Windows:
+# Windows
 venv\Scripts\activate
-# macOS/Linux:
+# macOS / Linux
 source venv/bin/activate
 
-# 3. Bağımlılıkları yükleyin
+# Bağımlılıkları yükle
 pip install -r requirements.txt
+```
 
-# 4. Uygulamayı çalıştırın
+API anahtarını ortam değişkeni olarak tanımla:
+
+```bash
+# Windows (PowerShell)
+$env:GEMINI_API_KEY="buraya_api_anahtarinizi_girin"
+
+# macOS / Linux
+export GEMINI_API_KEY="buraya_api_anahtarinizi_girin"
+```
+
+Uygulamayı başlat:
+
+```bash
 python app.py
 ```
 
-### Kullanım
-
 Tarayıcınızda `http://localhost:5000` adresine gidin.
 
-1. **Ana Sayfa**: Herhangi bir e-ticaret sitesi linkini yapıştırın
-2. **Yükleme Ekranı**: AI analiz ederken animasyonlu bekleme ekranı
-3. **Sonuçlar**: 
-   - Ürün bilgileri
-   - AI kararı (Kesinlikle Alınır / Tavsiye Edilir vb.)
-   - Artılar & Eksiler
-   - Duygu analizi (Pozitif/Nötr/Negatif)
-   - Sahte yorum risk skoru
-   - Memnuniyet trendi
-   - Hedef kitle önerileri
+---
+
+### 2. Docker ile Kurulum
+
+`docker-compose.yml` dosyasındaki `GEMINI_API_KEY` satırını kendi anahtarınızla doldurun:
+
+```yaml
+environment:
+  - GEMINI_API_KEY=buraya_api_anahtarinizi_girin
+```
+
+Ardından:
+
+```bash
+# İmajı oluştur ve başlat
+docker compose up --build -d
+
+# Logları takip et
+docker compose logs -f
+
+# Durdurmak için
+docker compose down
+```
+
+Uygulama `http://localhost:5000` adresinde erişilebilir hale gelir.
+
+---
+
+### 3. Ortam Değişkenleri
+
+| Değişken | Açıklama | Zorunlu |
+|---|---|---|
+| `GEMINI_API_KEY` | Google Gemini API anahtarı | ✅ Evet |
+| `FLASK_SECRET_KEY` | Flask oturum şifreleme anahtarı | Önerilir |
+
+> **İpucu:** Production ortamında `FLASK_SECRET_KEY` için güçlü, rastgele bir değer kullanın:
+> ```bash
+> python -c "import secrets; print(secrets.token_hex(32))"
+> ```
+
+---
+
+### 4. Playwright Desteği *(Opsiyonel)*
+
+Bot koruması aktif olan sayfalarda JavaScript render desteği için:
+
+```bash
+pip install playwright
+playwright install chromium
+```
+
+Playwright kuruluysa, HTML scraping başarısız olduğunda otomatik olarak devreye girer.
+
+---
 
 ## 📁 Proje Yapısı
 
 ```
 shopmind-ai/
-├── app.py                 # Flask backend
-├── requirements.txt       # Python bağımlılıkları
-├── README.md             # Bu dosya
+├── app.py                  # Ana backend: scraping + AI analiz + Flask rotaları
+├── requirements.txt        # Python bağımlılıkları
+├── Dockerfile              # Docker imaj tanımı
+├── docker-compose.yml      # Docker Compose konfigürasyonu
+├── users.json              # Kullanıcı veritabanı (otomatik oluşturulur)
 └── templates/
-    ├── base.html         # Ana şablon (header, footer, tema)
-    ├── index.html        # Ana sayfa (URL girişi)
-    ├── loading.html      # Analiz yükleme ekranı
-    └── results.html      # Analiz sonuçları
+    ├── base.html           # Ana şablon (navigasyon, tema, genel layout)
+    ├── index.html          # Ana sayfa (URL girişi)
+    ├── loading.html        # Analiz yükleme ekranı (canlı durum mesajları)
+    ├── results.html        # Analiz sonuç sayfası
+    └── about.html          # Hakkında sayfası
 ```
 
-## 🎨 Özellikler
+---
 
-- **Dark Theme**: Neon yeşil aksanlı karanlık tema
-- **Glassmorphism**: Modern cam efektli paneller
-- **Responsive**: Mobil ve masaüstü uyumlu
-- **Animasyonlar**: Yükleme spinner'ı, fade-in efektleri, progress bar'lar
-- **Demo Mod**: URL hash'ine göre tutarlı mock veri üretimi
+## 📸 Ekran Görüntüleri
 
-## 🔧 Geliştirme
+> *Ekran görüntüleri yakında eklenecektir.*
 
-### Gerçek API Entegrasyonu
+| Ana Sayfa | Yükleme | Sonuçlar |
+|---|---|---|
+| *(screenshot)* | *(screenshot)* | *(screenshot)* |
 
-`MockAnalyzer` sınıfını gerçek bir analiz servisi ile değiştirin:
+---
 
-```python
-# app.py içinde MockAnalyzer yerine:
-class RealAnalyzer:
-    def __init__(self, url):
-        self.url = url
-
-    def analyze(self):
-        # Burada gerçek web scraping veya API çağrısı yapın
-        # BeautifulSoup, Selenium, veya harici bir AI API kullanabilirsiniz
-        pass
-```
-
-### Ortam Değişkenleri
-
-`.env` dosyası oluşturun:
+## 🔄 Nasıl Çalışır?
 
 ```
-FLASK_ENV=production
-SECRET_KEY=your-secret-key-here
+Kullanıcı bir ürün linki girer
+        ↓
+Site tespit edilir (Trendyol / Hepsiburada / Amazon / ...)
+        ↓
+Çok katmanlı scraping fallback zinciri çalışır:
+   1. Platform REST API'si (varsa)
+   2. Sayfadaki gömülü JSON verisi (__NEXT_DATA__, window.* props)
+   3. JSON-LD yapılandırılmış veri
+   4. HTML CSS seçicileri
+   5. Playwright ile headless browser render (opsiyonel)
+   6. Gemini AI arama tabanlı veri çekme (son yedek)
+        ↓
+Yorumlar + ürün bilgisi Gemini 2.5 Flash'a gönderilir
+        ↓
+AI: duygu analizi · artılar/eksiler · satın alma tavsiyesi · hedef kitle üretir
+        ↓
+Sonuçlar görsel dashboard'da sunulur
 ```
 
-## 📝 Notlar
+---
 
-- Bu demo versiyonunda analizler URL hash'ine göre tutarlı mock veriler üretir
-- Gerçek e-ticaret sitelerinden veri çekmek için web scraping veya API entegrasyonu gereklidir
-- Trendyol, Amazon, Hepsiburada gibi sitelerin API'leri veya scraping kuralları değişebilir
+## ⚠️ Bilinen Kısıtlamalar & Yol Haritası
+
+### Mevcut Kısıtlamalar
+
+Trendyol, Hepsiburada ve Amazon gibi büyük e-ticaret platformları, bot ve otomatik erişim sistemlerine karşı güçlü güvenlik katmanları (Akamai Bot Manager, Cloudflare vb.) kullanmaktadır. Bu durum zaman zaman ürün görsellerinin veya yorum verilerinin çekilmesini engelleyebilir.
+
+ShopMind AI bu engeli aşmak için **çok katmanlı bir fallback zinciri** kullanır ve başarısız istekleri yeniden dener. Belirli zaman dilimlerinde platforma erişildiğinde analizin tüm katmanları eksiksiz biçimde çalışmaktadır.
+
+> **Köklü çözüm:** Söz konusu platformların resmi API erişimi sağlaması ya da veri ortaklıkları kurması durumunda bu kısıtlamalar tamamen ortadan kalkacak; çok daha hızlı, eksiksiz ve güvenilir analizler sunmak mümkün olacaktır.
+
+### Yol Haritası
+
+- [ ] Resmi platform API entegrasyonları (Trendyol Partner API, Amazon PA-API vb.)
+- [ ] Analiz geçmişi ve karşılaştırma özelliği
+- [ ] Fiyat takibi ve bildirim sistemi
+- [ ] Ürünler arası karşılaştırma modülü
+- [ ] Tarayıcı eklentisi (Chrome / Firefox)
+- [ ] Toplu analiz (birden fazla ürün aynı anda)
+- [ ] Export: PDF raporu / CSV çıktısı
+
+---
+
+## 🤝 Katkıda Bulunma
+
+Katkılarınız projeyi daha iyi hale getirir. Her türlü katkı kabul edilir:
+
+1. Repoyu **fork**'layın
+2. Özellik dalı oluşturun: `git checkout -b feature/yeni-ozellik`
+3. Değişikliklerinizi commit edin: `git commit -m 'feat: yeni özellik eklendi'`
+4. Dalınızı push edin: `git push origin feature/yeni-ozellik`
+5. **Pull Request** açın
+
+---
 
 ## 📄 Lisans
 
-MIT License
+Bu proje **MIT Lisansı** altında dağıtılmaktadır.
+
+---
+
+<div align="center">
+
+**ShopMind AI** · *Akıllı alışveriş kararları için*
+
+</div>

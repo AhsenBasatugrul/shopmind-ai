@@ -22,7 +22,10 @@
       "Bash(\"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\shopmind-ai\\\\.conda\\\\python.exe\" -c \"import flask; print\\('flask OK'\\)\")",
       "Bash(\"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\shopmind-ai\\\\.conda\\\\python.exe\" -c \"import requests; print\\('requests OK'\\)\")",
       "Bash(\"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\shopmind-ai\\\\.conda\\\\python.exe\" -c \"import ast; ast.parse\\(open\\('app.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
-      "Bash(\"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\shopmind-ai\\\\.conda\\\\python.exe\" -c \"import flask, requests, bs4, google.genai; print\\('Imports OK'\\)\")"
+      "Bash(\"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\shopmind-ai\\\\.conda\\\\python.exe\" -c \"import flask, requests, bs4, google.genai; print\\('Imports OK'\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr :5000)",
+      "PowerShell(netstat -ano)"
     ]
   }
 }
